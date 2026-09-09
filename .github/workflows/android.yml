@@ -2,9 +2,6 @@ name: Android build
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 concurrency:
   group: android-build-${{ github.ref }}

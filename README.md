@@ -88,7 +88,13 @@ melos run build:ios-ipa
 
 ## CI (all platforms)
 
-See [docs/ci.md](docs/ci.md) for Linux / Windows / Android / iOS workflows and artifacts.
+See [docs/ci.md](docs/ci.md) for workflows and artifacts.
+
+```bash
+# Cut a release (tests + all builds + GitHub Release assets)
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## Fonts
 

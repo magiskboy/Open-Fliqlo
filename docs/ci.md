@@ -5,16 +5,30 @@ GitHub Actions workflows under [`.github/workflows/`](../.github/workflows/).
 | Workflow | Runner | Artifact | Trigger |
 |---|---|---|---|
 | [ci.yml](../.github/workflows/ci.yml) | Ubuntu | — (analyze + test) | `main`, PR, manual |
-| [linux.yml](../.github/workflows/linux.yml) | Ubuntu | `OpenFliqlo-linux-x64-*.tar.gz` | manual, tag `v*` |
-| [windows.yml](../.github/workflows/windows.yml) | Windows | `OpenFliqlo-windows-x64-*.zip` (+ `.scr`) | manual, tag `v*` |
-| [android.yml](../.github/workflows/android.yml) | Ubuntu | `OpenFliqlo-android-*.apk` | manual, tag `v*` |
-| [ios-ipa.yml](../.github/workflows/ios-ipa.yml) | macOS | `OpenFliqlo-ios-unsigned-*.ipa` | manual, tag `v*` |
+| [release.yml](../.github/workflows/release.yml) | multi | all platform packages + **GitHub Release** | tag `v*.*.*` (e.g. `v1.0.0`) |
+| [linux.yml](../.github/workflows/linux.yml) | Ubuntu | `OpenFliqlo-linux-x64-*.tar.gz` | manual |
+| [windows.yml](../.github/workflows/windows.yml) | Windows | `OpenFliqlo-windows-x64-*.zip` (+ `.scr`) | manual |
+| [android.yml](../.github/workflows/android.yml) | Ubuntu | `OpenFliqlo-android-*.apk` | manual |
+| [ios-ipa.yml](../.github/workflows/ios-ipa.yml) | macOS | `OpenFliqlo-ios-unsigned-*.ipa` | manual |
 
-## How to run
+## Release (`v1.0.0`)
 
-1. Push the repo to GitHub.
-2. **Actions** → pick a workflow → **Run workflow**, or push a tag `v0.1.0`.
-3. Download artifacts from the completed run.
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The **Release** workflow will:
+
+1. Run analyze + tests  
+2. Build Linux, Windows, Android, iOS in parallel  
+3. Create a GitHub Release for that tag and attach all artifacts  
+
+Tag pattern must match `v*.*.*` (e.g. `v1.0.0`, `v0.2.1`). Prerelease tags with a hyphen (e.g. `v1.0.0-rc.1`) are marked as prerelease.
+
+## Manual single-platform builds
+
+**Actions** → pick Linux / Windows / Android / iOS → **Run workflow**.
 
 ## Notes
 

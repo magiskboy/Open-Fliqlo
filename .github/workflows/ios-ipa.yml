@@ -2,9 +2,6 @@ name: iOS IPA (unsigned)
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 concurrency:
   group: ios-ipa-${{ github.ref }}
