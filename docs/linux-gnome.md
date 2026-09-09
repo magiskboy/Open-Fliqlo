@@ -27,7 +27,6 @@ melos run run:linux
 - KDE Plasma, Hyprland, Sway, and X11 sessions are best-effort only.
 - No xscreensaver / GNOME screensaver plugin integration yet.
 
-## Known issues
+## Screen saver on GNOME
 
-- On some Wayland compositors, the first fullscreen transition may flash the title bar briefly.
-- If `flutter run -d linux` fails with missing GTK/CMake deps, install Flutter’s Linux desktop prerequisites for your distro (on Fedora: `gtk3-devel`, `clang`, `cmake`, `ninja-build`, `pkgconf-pkg-config`).
+See [screensaver-gnome.md](screensaver-gnome.md) for `--screensaver`, the idle-launch script, and `.desktop` entry.

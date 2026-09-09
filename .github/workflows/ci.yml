@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Bootstrap packages
+        run: |
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> "$GITHUB_PATH"
+          # Melos may not be required; pub get each package via app
+          cd apps/open_fliqlo && flutter pub get
+
+      - name: Analyze
+        run: |
+          cd packages/fliqlo_core && flutter analyze
+          cd ../fliqlo_ui && flutter analyze
+          cd ../../apps/open_fliqlo && flutter analyze
+
+      - name: Test
+        run: |
+          cd packages/fliqlo_core && flutter test
+          cd ../fliqlo_ui && flutter test
+          cd ../../apps/open_fliqlo && flutter test

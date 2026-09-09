@@ -2,28 +2,43 @@
 
 Cross-platform fullscreen flip clock for **iOS**, **Android**, **Windows**, and **Linux (GNOME / Wayland)**. Inspired by the classic Fliqlo aesthetic — large flipping digits on a black background.
 
-> Not affiliated with Fliqlo®. P0 is a fullscreen app (not an OS screensaver).
+> Not affiliated with Fliqlo®.
 
-## Features (P0)
+## Features
 
-- Flip clock `HH:MM` (+ optional seconds)
-- Tap to toggle seconds · long-press for settings
+- Flip clock `HH:MM` (+ optional seconds, AM/PM in 12-hour mode)
+- Tap to toggle seconds · long-press for settings (interactive app)
 - 12/24h, dim, scale, flaps
 - Keep screen awake on mobile; fullscreen on desktop
+- OS screen saver integrations (see matrix below)
+
+## Screen saver matrix
+
+| Platform | Integration | Docs |
+|---|---|---|
+| **Windows** | `OpenFliqlo.scr` → `open_fliqlo.exe --screensaver` | [screensaver-windows.md](docs/screensaver-windows.md) |
+| **Android** | `DreamService` (system Screen saver) | [screensaver-android.md](docs/screensaver-android.md) |
+| **Linux GNOME** | `--screensaver` + idle script / `.desktop` | [screensaver-gnome.md](docs/screensaver-gnome.md) |
+| **iOS** | Flip clock **app only** (no system screensaver API) | [ios-ci.md](docs/ios-ci.md) |
+
+Shared modes: `--screensaver`, `--configure`, `--preview` (see S0 in app `LaunchMode`).
 
 ## Structure
 
 ```
-apps/open_fliqlo/       Flutter app
-packages/fliqlo_core/   Clock engine + settings
-packages/fliqlo_ui/     FlipDigit, ClockFace, SettingsSheet
-docs/                   Behavior + Linux/GNOME notes
+apps/open_fliqlo/           Flutter app (iOS/Android/Windows/Linux)
+packages/fliqlo_core/       Clock engine + settings
+packages/fliqlo_ui/         FlipDigit, ClockFace, SettingsSheet
+platforms/windows_scr/      .scr host (.NET)
+packaging/linux/            .desktop + idle-launch script
+docs/                       Behavior + screensaver guides
 ```
 
 ## Prerequisites
 
 - Flutter stable (3.24+)
-- For Linux desktop: GTK development packages (see [docs/linux-gnome.md](docs/linux-gnome.md))
+- Linux desktop: GTK packages (see [docs/linux-gnome.md](docs/linux-gnome.md))
+- Windows `.scr` build: .NET 8 SDK (on Windows)
 
 ## Setup
 
@@ -35,16 +50,24 @@ melos bootstrap
 ## Run
 
 ```bash
-# Linux (GNOME/Wayland)
+# Interactive app
 melos run run:linux
-# or
-cd apps/open_fliqlo && flutter run -d linux
-
-# Windows
 melos run run:windows
+
+# Screensaver mode (Linux)
+melos run run:screensaver:linux
+# or: cd apps/open_fliqlo && flutter run -d linux -a --screensaver
 
 # Mobile
 cd apps/open_fliqlo && flutter run -d <device>
+```
+
+## Build Windows screen saver
+
+On a Windows machine:
+
+```powershell
+.\platforms\windows_scr\build.ps1
 ```
 
 ## Test / analyze
@@ -53,6 +76,19 @@ cd apps/open_fliqlo && flutter run -d <device>
 melos run test
 melos run analyze
 ```
+
+## CI (iOS IPA)
+
+Unsigned IPA via GitHub Actions — see [docs/ios-ci.md](docs/ios-ci.md).
+
+```bash
+# Local (macOS only)
+melos run build:ios-ipa
+```
+
+## CI (all platforms)
+
+See [docs/ci.md](docs/ci.md) for Linux / Windows / Android / iOS workflows and artifacts.
 
 ## Fonts
 

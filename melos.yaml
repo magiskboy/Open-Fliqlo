@@ -23,3 +23,12 @@ scripts:
   run:windows:
     run: cd apps/open_fliqlo && flutter run -d windows
     description: Run Open Fliqlo on Windows
+  run:screensaver:linux:
+    run: cd apps/open_fliqlo && flutter run -d linux -a --screensaver
+    description: Run Open Fliqlo in screensaver mode on Linux
+  build:windows-scr:
+    run: bash platforms/windows_scr/build.sh
+    description: Build Flutter Windows release + OpenFliqlo.scr (needs Windows/.NET for SCR host)
+  build:ios-ipa:
+    run: cd apps/open_fliqlo && flutter build ipa --release --no-codesign
+    description: Build unsigned iOS IPA (macOS + Xcode only)

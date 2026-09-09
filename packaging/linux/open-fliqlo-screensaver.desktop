@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Open Fliqlo Screensaver
+Comment=Fullscreen flip clock (exit on mouse/keyboard)
+Exec=open_fliqlo --screensaver
+Icon=open-fliqlo
+Terminal=false
+Type=Application
+Categories=Utility;Clock;
+StartupNotify=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=false

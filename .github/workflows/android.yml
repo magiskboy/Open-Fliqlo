@@ -1,0 +1,59 @@
+name: Android build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/open_fliqlo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Package artifact
+        id: package
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          REF_NAME="${GITHUB_REF_NAME:-manual}"
+          SHA_SHORT="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          ARTIFACT_BASE="OpenFliqlo-android-${REF_NAME}-${SHA_SHORT}"
+          mkdir -p artifacts
+          cp apps/open_fliqlo/build/app/outputs/flutter-apk/app-release.apk \
+            "artifacts/${ARTIFACT_BASE}.apk"
+          echo "artifact_base=${ARTIFACT_BASE}" >> "$GITHUB_OUTPUT"
+          ls -la artifacts/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact_base }}
+          path: artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 30

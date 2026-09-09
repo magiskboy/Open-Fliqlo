@@ -1,0 +1,3 @@
+# Ad Hoc device UDIDs for future signed / Diawi builds.
+# One UDID per line.
+00008030-001444C83C9B402E

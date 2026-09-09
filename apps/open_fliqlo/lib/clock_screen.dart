@@ -3,11 +3,14 @@ import 'package:fliqlo_ui/fliqlo_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'launch_mode.dart';
 import 'platform_shell.dart';
 
-/// Fullscreen flip clock with tap / long-press gestures.
+/// Fullscreen flip clock with tap / long-press gestures (interactive modes).
 class ClockScreen extends StatefulWidget {
-  const ClockScreen({super.key});
+  const ClockScreen({super.key, this.mode = LaunchMode.normal});
+
+  final LaunchMode mode;
 
   @override
   State<ClockScreen> createState() => _ClockScreenState();
@@ -18,6 +21,9 @@ class _ClockScreenState extends State<ClockScreen> {
   ClockEngine? _engine;
   bool _settingsOpen = false;
   bool _ready = false;
+  bool _configureOpened = false;
+
+  LaunchMode get _mode => widget.mode;
 
   @override
   void initState() {
@@ -37,6 +43,14 @@ class _ClockScreenState extends State<ClockScreen> {
     await PlatformShell.enterImmersive();
     if (mounted) {
       setState(() => _ready = true);
+    }
+    if (_mode.openSettingsOnLaunch && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_configureOpened && mounted) {
+          _configureOpened = true;
+          _openSettings();
+        }
+      });
     }
   }
 
@@ -58,11 +72,15 @@ class _ClockScreenState extends State<ClockScreen> {
   }
 
   Future<void> _toggleSeconds() async {
+    if (!_mode.allowInteractiveGestures) return;
     final next = !_store.settings.showSeconds;
     await _store.patch(showSeconds: next);
   }
 
   Future<void> _openSettings() async {
+    if (_mode == LaunchMode.screensaver || _mode == LaunchMode.preview) {
+      return;
+    }
     if (_settingsOpen) return;
     _settingsOpen = true;
     await showModalBottomSheet<void>(
@@ -86,10 +104,26 @@ class _ClockScreenState extends State<ClockScreen> {
     );
     _settingsOpen = false;
     await PlatformShell.enterImmersive();
+    // Configure mode: closing settings exits (Windows /c UX).
+    if (_mode == LaunchMode.configure && mounted) {
+      PlatformShell.requestExit();
+    }
+  }
+
+  void _exitIfScreensaver() {
+    if (_mode.exitOnInput) {
+      PlatformShell.requestExit();
+    }
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (_mode.exitOnInput) {
+      _exitIfScreensaver();
+      return KeyEventResult.handled;
+    }
+
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       if (_settingsOpen) {
         Navigator.of(context).maybePop();
@@ -120,29 +154,34 @@ class _ClockScreenState extends State<ClockScreen> {
       );
     }
 
+    final clock = Scaffold(
+      backgroundColor: FliqloTheme.background,
+      body: ListenableBuilder(
+        listenable: Listenable.merge([_engine!, _store]),
+        builder: (context, _) {
+          final snapshot = _engine!.snapshot;
+          if (snapshot == null) {
+            return const SizedBox.expand();
+          }
+          return ClockFace(
+            snapshot: snapshot,
+            settings: _store.settings,
+          );
+        },
+      ),
+    );
+
     return Focus(
       autofocus: true,
       onKeyEvent: _onKey,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: _toggleSeconds,
-        onLongPress: _openSettings,
-        child: Scaffold(
-          backgroundColor: FliqloTheme.background,
-          body: ListenableBuilder(
-            listenable: Listenable.merge([_engine!, _store]),
-            builder: (context, _) {
-              final snapshot = _engine!.snapshot;
-              if (snapshot == null) {
-                return const SizedBox.expand();
-              }
-              return ClockFace(
-                snapshot: snapshot,
-                settings: _store.settings,
-              );
-            },
-          ),
-        ),
+        onTap: _mode.exitOnInput
+            ? _exitIfScreensaver
+            : (_mode.allowInteractiveGestures ? _toggleSeconds : null),
+        onLongPress: _mode.allowInteractiveGestures ? _openSettings : null,
+        onPanStart: _mode.exitOnInput ? (_) => _exitIfScreensaver() : null,
+        child: clock,
       ),
     );
   }

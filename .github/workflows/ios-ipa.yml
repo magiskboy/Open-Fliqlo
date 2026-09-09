@@ -1,0 +1,78 @@
+name: iOS IPA (unsigned)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ipa:
+    name: Build unsigned IPA
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/open_fliqlo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Build IPA (no codesign)
+        run: flutter build ipa --release --no-codesign
+
+      - name: Package IPA artifact
+        id: package
+        working-directory: apps/open_fliqlo
+        run: |
+          set -euo pipefail
+          OUT_DIR="${{ github.workspace }}/artifacts"
+          mkdir -p "$OUT_DIR"
+          REF_NAME="${GITHUB_REF_NAME:-manual}"
+          SHA_SHORT="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          ARTIFACT_BASE="OpenFliqlo-ios-unsigned-${REF_NAME}-${SHA_SHORT}"
+
+          if compgen -G "build/ios/ipa/*.ipa" > /dev/null; then
+            cp build/ios/ipa/*.ipa "$OUT_DIR/${ARTIFACT_BASE}.ipa"
+          elif [[ -d build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app ]]; then
+            STAGE="$(mktemp -d)"
+            mkdir -p "$STAGE/Payload"
+            cp -R build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app \
+              "$STAGE/Payload/Runner.app"
+            (cd "$STAGE" && zip -r -q "$OUT_DIR/${ARTIFACT_BASE}.ipa" Payload)
+            rm -rf "$STAGE"
+          elif [[ -d build/ios/iphoneos/Runner.app ]]; then
+            STAGE="$(mktemp -d)"
+            mkdir -p "$STAGE/Payload"
+            cp -R build/ios/iphoneos/Runner.app "$STAGE/Payload/Runner.app"
+            (cd "$STAGE" && zip -r -q "$OUT_DIR/${ARTIFACT_BASE}.ipa" Payload)
+            rm -rf "$STAGE"
+          else
+            echo "No IPA or Runner.app found under build/ios"
+            find build/ios -maxdepth 4 -type d 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "artifact_base=${ARTIFACT_BASE}" >> "$GITHUB_OUTPUT"
+          ls -la "$OUT_DIR"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact_base }}
+          path: artifacts/*.ipa
+          if-no-files-found: error
+          retention-days: 30

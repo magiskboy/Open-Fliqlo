@@ -4,13 +4,9 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
-    override fun getDartEntrypointArgs(): List<String> {
-        if (intent?.getBooleanExtra(EXTRA_CONFIGURE, false) == true) {
-            return listOf("--configure")
-        }
-        return emptyList()
-    }
+/** Opened from the system screen-saver settings gear for Open Fliqlo. */
+class ConfigureActivity : FlutterActivity() {
+    override fun getDartEntrypointArgs(): List<String> = listOf("--configure")
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -26,9 +22,5 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
-    }
-
-    companion object {
-        const val EXTRA_CONFIGURE = "configure"
     }
 }

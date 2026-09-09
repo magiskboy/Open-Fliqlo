@@ -1,0 +1,62 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Build Windows + SCR
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Pub get
+        working-directory: apps/open_fliqlo
+        run: flutter pub get
+
+      - name: Build Flutter Windows + SCR
+        shell: pwsh
+        run: .\platforms\windows_scr\build.ps1
+
+      - name: Zip package
+        id: package
+        shell: pwsh
+        run: |
+          $ref = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "manual" }
+          $sha = $env:GITHUB_SHA.Substring(0, 7)
+          $base = "OpenFliqlo-windows-x64-$ref-$sha"
+          $src = Join-Path $env:GITHUB_WORKSPACE "dist\windows-screensaver"
+          $outDir = Join-Path $env:GITHUB_WORKSPACE "artifacts"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $zip = Join-Path $outDir "$base.zip"
+          if (Test-Path $zip) { Remove-Item $zip }
+          Compress-Archive -Path (Join-Path $src "*") -DestinationPath $zip
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "artifact_base=$base"
+          Get-ChildItem $outDir
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact_base }}
+          path: artifacts/*.zip
+          if-no-files-found: error
+          retention-days: 30
