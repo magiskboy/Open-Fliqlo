@@ -1,0 +1,32 @@
+# Melos / Dart
+.dart_tool/
+.packages
+pubspec.lock
+!apps/open_fliqlo/pubspec.lock
+
+# Flutter / IDE
+.idea/
+.vscode/
+*.iml
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Build
+**/build/
+**/coverage/
+**/.cxx/
+
+# Platform
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Pods/
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+*.jks
+
+# Misc
+*.log
+.DS_Store

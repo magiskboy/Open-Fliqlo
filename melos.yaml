@@ -1,0 +1,25 @@
+name: open_fliqlo
+repository: https://github.com/openfliqlo/open-fliqlo
+
+packages:
+  - apps/**
+  - packages/**
+
+command:
+  bootstrap:
+    environment:
+      sdk: ">=3.5.0 <4.0.0"
+
+scripts:
+  analyze:
+    run: melos exec -- flutter analyze
+    description: Run flutter analyze in all packages
+  test:
+    run: melos exec --dir-exists=test -- flutter test
+    description: Run tests in all packages
+  run:linux:
+    run: cd apps/open_fliqlo && flutter run -d linux
+    description: Run Open Fliqlo on Linux
+  run:windows:
+    run: cd apps/open_fliqlo && flutter run -d windows
+    description: Run Open Fliqlo on Windows

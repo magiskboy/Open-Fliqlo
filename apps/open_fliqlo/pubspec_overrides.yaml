@@ -1,0 +1,6 @@
+# melos_managed_dependency_overrides: fliqlo_core,fliqlo_ui
+dependency_overrides:
+  fliqlo_core:
+    path: ../../packages/fliqlo_core
+  fliqlo_ui:
+    path: ../../packages/fliqlo_ui
