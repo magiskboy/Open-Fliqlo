@@ -6,6 +6,7 @@ class FliqloSettings {
     this.dim = 0.0,
     this.scale = 1.0,
     this.showFlaps = true,
+    this.forceLandscape = false,
   });
 
   final bool use24Hour;
@@ -20,12 +21,16 @@ class FliqloSettings {
   /// Whether to draw the horizontal flap hinge.
   final bool showFlaps;
 
+  /// Lock the app to landscape orientations (mobile).
+  final bool forceLandscape;
+
   FliqloSettings copyWith({
     bool? use24Hour,
     bool? showSeconds,
     double? dim,
     double? scale,
     bool? showFlaps,
+    bool? forceLandscape,
   }) {
     return FliqloSettings(
       use24Hour: use24Hour ?? this.use24Hour,
@@ -33,6 +38,7 @@ class FliqloSettings {
       dim: dim ?? this.dim,
       scale: scale ?? this.scale,
       showFlaps: showFlaps ?? this.showFlaps,
+      forceLandscape: forceLandscape ?? this.forceLandscape,
     );
   }
 
@@ -43,7 +49,8 @@ class FliqloSettings {
         other.showSeconds == showSeconds &&
         other.dim == dim &&
         other.scale == scale &&
-        other.showFlaps == showFlaps;
+        other.showFlaps == showFlaps &&
+        other.forceLandscape == forceLandscape;
   }
 
   @override
@@ -53,5 +60,6 @@ class FliqloSettings {
         dim,
         scale,
         showFlaps,
+        forceLandscape,
       );
 }

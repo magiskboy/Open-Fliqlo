@@ -110,6 +110,31 @@ abstract final class PlatformShell {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
+  /// Lock to landscape when [forceLandscape] is true; otherwise allow all.
+  /// No-op on desktop / web.
+  static Future<void> applyPreferredOrientations({
+    required bool forceLandscape,
+  }) async {
+    if (!isMobile) return;
+    try {
+      if (forceLandscape) {
+        await SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      } else {
+        await SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
+    } catch (_) {
+      // SystemChrome may be unavailable in tests.
+    }
+  }
+
   /// Quit the process (screensaver / preview) or finish Android activity/dream.
   static void requestExit() {
     if (kIsWeb) return;

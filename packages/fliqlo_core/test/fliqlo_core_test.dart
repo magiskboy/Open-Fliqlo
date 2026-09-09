@@ -92,21 +92,25 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'use24Hour': false,
         'dim': 0.4,
+        'forceLandscape': true,
       });
       final store = SettingsStore();
       await store.load();
       expect(store.settings.use24Hour, isFalse);
       expect(store.settings.dim, 0.4);
+      expect(store.settings.forceLandscape, isTrue);
 
-      await store.patch(showSeconds: true, scale: 0.8);
+      await store.patch(showSeconds: true, scale: 0.8, forceLandscape: false);
       expect(store.settings.showSeconds, isTrue);
       expect(store.settings.scale, 0.8);
+      expect(store.settings.forceLandscape, isFalse);
 
       final store2 = SettingsStore();
       await store2.load();
       expect(store2.settings.showSeconds, isTrue);
       expect(store2.settings.scale, 0.8);
       expect(store2.settings.use24Hour, isFalse);
+      expect(store2.settings.forceLandscape, isFalse);
     });
   });
 }

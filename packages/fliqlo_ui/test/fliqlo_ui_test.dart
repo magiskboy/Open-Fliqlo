@@ -115,4 +115,53 @@ void main() {
     expect(transform.transform.entry(0, 0), closeTo(0.5, 0.001));
     expect(transform.transform.entry(1, 1), closeTo(0.5, 0.001));
   });
+
+  testWidgets('SettingsSheet scrolls in a short landscape viewport', (tester) async {
+    // Phone landscape-ish: wide but short — content taller than viewport.
+    await tester.binding.setSurfaceSize(const Size(800, 280));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: SettingsSheet(
+            settings: const FliqloSettings(),
+            onChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('24-hour clock'), findsOneWidget);
+
+    // Scale controls sit below the fold in this viewport; drag to reveal.
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -200));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Scale'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('SettingsSheet exposes force landscape toggle', (tester) async {
+    var latest = const FliqloSettings();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: SettingsSheet(
+            settings: latest,
+            onChanged: (s) => latest = s,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Force landscape'), findsOneWidget);
+    await tester.tap(find.text('Force landscape'));
+    await tester.pumpAndSettle();
+    expect(latest.forceLandscape, isTrue);
+  });
 }

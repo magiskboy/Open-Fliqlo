@@ -22,6 +22,7 @@ class _ClockScreenState extends State<ClockScreen> {
   bool _settingsOpen = false;
   bool _ready = false;
   bool _configureOpened = false;
+  bool _forceLandscapeApplied = false;
 
   LaunchMode get _mode => widget.mode;
 
@@ -39,6 +40,7 @@ class _ClockScreenState extends State<ClockScreen> {
       showSeconds: settings.showSeconds,
     )..start();
     _store.addListener(_onSettingsChanged);
+    await _applyOrientation(settings.forceLandscape);
     await PlatformShell.enableKeepAwake();
     await PlatformShell.enterImmersive();
     if (mounted) {
@@ -54,12 +56,22 @@ class _ClockScreenState extends State<ClockScreen> {
     }
   }
 
+  Future<void> _applyOrientation(bool forceLandscape) async {
+    _forceLandscapeApplied = forceLandscape;
+    await PlatformShell.applyPreferredOrientations(
+      forceLandscape: forceLandscape,
+    );
+  }
+
   void _onSettingsChanged() {
     final s = _store.settings;
     _engine?.updateOptions(
       use24Hour: s.use24Hour,
       showSeconds: s.showSeconds,
     );
+    if (s.forceLandscape != _forceLandscapeApplied) {
+      _applyOrientation(s.forceLandscape);
+    }
     setState(() {});
   }
 
@@ -91,14 +103,19 @@ class _ClockScreenState extends State<ClockScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return ListenableBuilder(
-          listenable: _store,
-          builder: (context, _) {
-            return SettingsSheet(
-              settings: _store.settings,
-              onChanged: (s) => _store.update(s),
-            );
-          },
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: ListenableBuilder(
+            listenable: _store,
+            builder: (context, _) {
+              return SettingsSheet(
+                settings: _store.settings,
+                onChanged: (s) => _store.update(s),
+              );
+            },
+          ),
         );
       },
     );

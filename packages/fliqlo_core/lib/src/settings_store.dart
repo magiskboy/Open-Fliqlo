@@ -20,6 +20,7 @@ class SettingsStore extends ChangeNotifier {
   static const _kDim = 'dim';
   static const _kScale = 'scale';
   static const _kShowFlaps = 'showFlaps';
+  static const _kForceLandscape = 'forceLandscape';
 
   Future<void> load() async {
     _prefs ??= _prefsOverride ?? await SharedPreferences.getInstance();
@@ -30,6 +31,7 @@ class SettingsStore extends ChangeNotifier {
       dim: (p.getDouble(_kDim) ?? 0.0).clamp(0.0, 0.8),
       scale: (p.getDouble(_kScale) ?? 1.0).clamp(0.5, 1.0),
       showFlaps: p.getBool(_kShowFlaps) ?? true,
+      forceLandscape: p.getBool(_kForceLandscape) ?? false,
     );
     _loaded = true;
     notifyListeners();
@@ -46,6 +48,7 @@ class SettingsStore extends ChangeNotifier {
       p.setDouble(_kDim, next.dim),
       p.setDouble(_kScale, next.scale),
       p.setBool(_kShowFlaps, next.showFlaps),
+      p.setBool(_kForceLandscape, next.forceLandscape),
     ]);
   }
 
@@ -55,6 +58,7 @@ class SettingsStore extends ChangeNotifier {
     double? dim,
     double? scale,
     bool? showFlaps,
+    bool? forceLandscape,
   }) {
     return update(
       _settings.copyWith(
@@ -63,6 +67,7 @@ class SettingsStore extends ChangeNotifier {
         dim: dim,
         scale: scale,
         showFlaps: showFlaps,
+        forceLandscape: forceLandscape,
       ),
     );
   }
