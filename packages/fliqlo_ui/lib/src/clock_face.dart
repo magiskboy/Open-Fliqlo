@@ -34,45 +34,52 @@ class ClockFace extends StatelessWidget {
             digitCount * 1.0 + pairGaps * 0.12 + colonCount * 0.36;
 
         // At scale=1.0, fill the binding axis (width or height) with a thin margin.
+        // Scale is applied to digit metrics (not Transform.scale) so each
+        // RepaintBoundary stays a stable, independently cached layer.
         const edgePad = 0.02;
+        final scale = settings.scale.clamp(0.5, 1.0);
         final availW = maxWidth * (1 - edgePad * 2);
         final availH = maxHeight * (1 - edgePad * 2);
         const digitAspect = 0.72; // width / height
         final heightFromWidth = availW / (widthUnits * digitAspect);
-        final digitHeight = math.min(availH, heightFromWidth);
+        final digitHeight = math.min(availH, heightFromWidth) * scale;
         final digitWidth = digitHeight * digitAspect;
         final gap = digitWidth * 0.12;
         final colonWidth = digitWidth * 0.36;
 
         Widget digit(int value, {String? amPmOverlay, bool isPm = false}) {
-          return SizedBox(
-            width: digitWidth,
-            height: digitHeight,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                FlipDigit(
-                  digit: value,
-                  showFlaps: settings.showFlaps,
-                ),
-                if (amPmOverlay != null)
-                  CustomPaint(
-                    painter: _AmPmPainter(
-                      label: amPmOverlay,
-                      isPm: isPm,
-                    ),
+          return RepaintBoundary(
+            child: SizedBox(
+              width: digitWidth,
+              height: digitHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  FlipDigit(
+                    digit: value,
+                    showFlaps: settings.showFlaps,
                   ),
-              ],
+                  if (amPmOverlay != null)
+                    CustomPaint(
+                      painter: _AmPmPainter(
+                        label: amPmOverlay,
+                        isPm: isPm,
+                      ),
+                    ),
+                ],
+              ),
             ),
           );
         }
 
         Widget colon() {
-          return SizedBox(
-            width: colonWidth,
-            height: digitHeight,
-            child: CustomPaint(
-              painter: _ColonPainter(sizeFactor: digitHeight),
+          return RepaintBoundary(
+            child: SizedBox(
+              width: colonWidth,
+              height: digitHeight,
+              child: CustomPaint(
+                painter: _ColonPainter(sizeFactor: digitHeight),
+              ),
             ),
           );
         }
@@ -105,13 +112,7 @@ class ClockFace extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Center(
-                child: Transform.scale(
-                  key: const ValueKey('clock-scale'),
-                  scale: settings.scale.clamp(0.5, 1.0),
-                  child: row,
-                ),
-              ),
+              Center(child: row),
               if (settings.dim > 0)
                 IgnorePointer(
                   child: ColoredBox(

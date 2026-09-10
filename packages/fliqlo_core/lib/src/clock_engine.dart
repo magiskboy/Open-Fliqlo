@@ -87,14 +87,20 @@ class ClockEngine extends ChangeNotifier {
       }
     }
 
+    // When seconds are hidden, second-digit churn must not notify — otherwise
+    // the UI rebuilds/rasters every second despite an unchanged H:M face.
+    final secondsChanged = previous != null &&
+        _showSeconds &&
+        (previous.secondTens != digits[DigitSlot.secondTens] ||
+            previous.secondOnes != digits[DigitSlot.secondOnes]);
+
     final digitsChanged = previous == null ||
         force ||
         previous.hourTens != digits[DigitSlot.hourTens] ||
         previous.hourOnes != digits[DigitSlot.hourOnes] ||
         previous.minuteTens != digits[DigitSlot.minuteTens] ||
         previous.minuteOnes != digits[DigitSlot.minuteOnes] ||
-        previous.secondTens != digits[DigitSlot.secondTens] ||
-        previous.secondOnes != digits[DigitSlot.secondOnes] ||
+        secondsChanged ||
         previous.showSeconds != _showSeconds ||
         previous.use24Hour != _use24Hour ||
         previous.isPm != (now.hour >= 12);

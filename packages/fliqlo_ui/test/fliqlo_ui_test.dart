@@ -68,6 +68,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('ClockFace isolates each digit and colon with RepaintBoundary',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ClockFace(
+              snapshot: _snap(),
+              settings: const FliqloSettings(),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // 4 digits + 1 colon (no seconds).
+    expect(find.byType(RepaintBoundary), findsAtLeastNWidgets(5));
+    expect(find.byType(FlipDigit), findsNWidgets(4));
+  });
+
   testWidgets('scale 100% fills the binding viewport axis', (tester) async {
     const viewW = 800.0;
     const viewH = 600.0;
@@ -93,27 +115,29 @@ void main() {
     expect(right - left, greaterThan(viewW * 0.85));
   });
 
-  testWidgets('scale shrinks the clock transform', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ClockFace(
-              snapshot: _snap(),
-              settings: const FliqloSettings(scale: 0.5),
+  testWidgets('scale shrinks digit layout size', (tester) async {
+    Future<Size> digitSizeAt(double scale) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ClockFace(
+                snapshot: _snap(),
+                settings: FliqloSettings(scale: scale),
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
+      return tester.getSize(find.byType(FlipDigit).first);
+    }
 
-    final transform = tester.widget<Transform>(
-      find.byKey(const ValueKey('clock-scale')),
-    );
-    expect(transform.transform.entry(0, 0), closeTo(0.5, 0.001));
-    expect(transform.transform.entry(1, 1), closeTo(0.5, 0.001));
+    final full = await digitSizeAt(1.0);
+    final half = await digitSizeAt(0.5);
+    expect(half.width, closeTo(full.width * 0.5, 0.5));
+    expect(half.height, closeTo(full.height * 0.5, 0.5));
   });
 
   testWidgets('SettingsSheet scrolls in a short landscape viewport', (tester) async {

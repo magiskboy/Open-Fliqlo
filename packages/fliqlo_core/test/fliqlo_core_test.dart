@@ -73,6 +73,48 @@ void main() {
       engine.dispose();
     });
 
+    test('does not notify when only seconds change and seconds are hidden', () {
+      final times = <DateTime>[
+        DateTime(2026, 9, 9, 10, 0, 10),
+        DateTime(2026, 9, 9, 10, 0, 11),
+      ];
+      var index = 0;
+      final engine = ClockEngine(
+        showSeconds: false,
+        clock: () => times[index],
+      )..start();
+
+      var notifications = 0;
+      engine.addListener(() => notifications++);
+
+      index = 1;
+      engine.refresh();
+      expect(notifications, 0);
+      expect(engine.snapshot!.minuteOnes, 0);
+      engine.dispose();
+    });
+
+    test('notifies when seconds change and seconds are shown', () {
+      final times = <DateTime>[
+        DateTime(2026, 9, 9, 10, 0, 10),
+        DateTime(2026, 9, 9, 10, 0, 11),
+      ];
+      var index = 0;
+      final engine = ClockEngine(
+        showSeconds: true,
+        clock: () => times[index],
+      )..start();
+
+      var notifications = 0;
+      engine.addListener(() => notifications++);
+
+      index = 1;
+      engine.refresh();
+      expect(notifications, 1);
+      expect(engine.snapshot!.secondOnes, 1);
+      engine.dispose();
+    });
+
     test('switching 12/24 hour resettles without flip artifact', () {
       final engine = ClockEngine(
         use24Hour: true,
