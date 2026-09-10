@@ -15,6 +15,10 @@ import {
     stopHost,
     sweepLockscreenOrphans,
 } from './fliqloProcess.js';
+import {
+    BottomPromptLayout,
+    resolveUnlockDialogLayoutActors,
+} from './bottomPromptLayout.js';
 import {sleep, destroySleeps} from './utils.js';
 
 const SHELL_VERSION = parseInt(Config.PACKAGE_VERSION.split('.')[0], 10);
@@ -205,23 +209,53 @@ export default class OpenFliqloLockscreenExtension extends Extension {
         }
         this._windowActor.opacity = 0;
 
-        const monitors = Main.layoutManager.monitors;
-        let maxW = 0;
-        let maxH = 0;
-        for (const m of monitors) {
-            maxW = Math.max(maxW, m.x + m.width);
-            maxH = Math.max(maxH, m.y + m.height);
-        }
-        this._window.move_resize_frame(true, 0, 0, maxW, maxH);
-        player.w = maxW;
-        player.h = maxH;
+        // Size to a single monitor — never span the virtual desktop (that
+        // splits hours/minutes across screens). Clones copy the full clock.
+        const src = this._sourceMonitor();
+        this._window.move_resize_frame(true, 0, 0, src.width, src.height);
+        player.w = src.width;
+        player.h = src.height;
 
         await this._injectIntoDialog();
         if (!stillCurrent())
             return;
 
         this._uiReady = true;
-        console.log('[OpenFliqloLockscreen] lock screen background ready');
+        console.log(
+            `[OpenFliqloLockscreen] lock screen background ready ` +
+            `(monitor-mode=${this._monitorMode()}, ${src.width}x${src.height})`
+        );
+    }
+
+    /**
+     * @returns {'current'|'all'}
+     */
+    _monitorMode() {
+        const mode = this._settings?.get_string('monitor-mode');
+        return mode === 'current' ? 'current' : 'all';
+    }
+
+    _currentMonitorIndex() {
+        try {
+            return global.display.get_current_monitor();
+        } catch (_e) {
+            return Main.layoutManager.primaryIndex;
+        }
+    }
+
+    _sourceMonitor() {
+        if (this._monitorMode() === 'current') {
+            const idx = this._currentMonitorIndex();
+            return Main.layoutManager.monitors[idx]
+                ?? Main.layoutManager.primaryMonitor;
+        }
+        return Main.layoutManager.primaryMonitor;
+    }
+
+    _shouldShowOnMonitor(monitorIndex) {
+        if (this._monitorMode() === 'all')
+            return true;
+        return monitorIndex === this._currentMonitorIndex();
     }
 
     async _waitForDialog() {
@@ -256,10 +290,150 @@ export default class OpenFliqloLockscreenExtension extends Extension {
         if (this._settings.get_boolean('hide-stock-clock'))
             this._detachStockClock(dialog);
 
+        if (this._settings.get_boolean('prompt-at-bottom'))
+            this._applyBottomPrompt(dialog);
+
+        if (this._settings.get_boolean('hide-profile-image'))
+            this._hideProfileImage(dialog);
+
         dialog._updateBackgrounds();
 
         if (this._settings.get_boolean('hide-stock-clock'))
             this._detachStockClock(dialog);
+    }
+
+    /**
+     * Pin avatar + password near the bottom edge (WACK-style layout swap).
+     */
+    _applyBottomPrompt(dialog) {
+        this._restoreBottomPrompt();
+
+        const resolved = resolveUnlockDialogLayoutActors(dialog);
+        if (!resolved) {
+            console.warn(
+                '[OpenFliqloLockscreen] UnlockDialog mainBox not ready; skip prompt-at-bottom'
+            );
+            return;
+        }
+
+        const {mainBox, actors} = resolved;
+        this._mainBox = mainBox;
+        this._origLayout = mainBox.layout_manager;
+
+        const margin = Math.max(
+            0,
+            this._settings.get_int('prompt-bottom-margin')
+        );
+        mainBox.layout_manager = new BottomPromptLayout({
+            ...actors,
+            bottomMargin: margin,
+        });
+        mainBox.queue_relayout();
+        console.log(
+            `[OpenFliqloLockscreen] auth prompt pinned to bottom (margin=${margin}px)`
+        );
+    }
+
+    _restoreBottomPrompt() {
+        if (!this._mainBox || !this._origLayout)
+            return;
+
+        try {
+            const old = this._mainBox.layout_manager;
+            this._mainBox.layout_manager = this._origLayout;
+            this._mainBox.queue_relayout();
+            if (old && old !== this._origLayout)
+                old._stack = null;
+        } catch (_e) {
+            // Dialog may already be torn down on unlock.
+        }
+
+        this._mainBox = null;
+        this._origLayout = null;
+    }
+
+    /**
+     * Hide UserWidget avatar on the unlock AuthPrompt.
+     * AuthPrompt is created lazily and setUser() rebuilds the widget, so we
+     * patch both _ensureAuthPrompt and setUser.
+     */
+    _hideProfileImage(dialog) {
+        if (!this._profileHidePatched && this._injectionManager) {
+            this._profileHidePatched = true;
+            const self = this;
+
+            this._injectionManager.overrideMethod(
+                dialog,
+                '_ensureAuthPrompt',
+                original => {
+                    return function (...args) {
+                        original.call(this, ...args);
+                        self._bindAuthPromptAvatarHide(this._authPrompt);
+                        self._detachProfileImage(this._authPrompt);
+                    };
+                }
+            );
+        }
+
+        if (dialog._authPrompt) {
+            this._bindAuthPromptAvatarHide(dialog._authPrompt);
+            this._detachProfileImage(dialog._authPrompt);
+        }
+    }
+
+    _bindAuthPromptAvatarHide(authPrompt) {
+        if (!authPrompt || authPrompt._openFliqloAvatarPatched)
+            return;
+        if (!this._injectionManager)
+            return;
+
+        authPrompt._openFliqloAvatarPatched = true;
+        const self = this;
+        this._injectionManager.overrideMethod(
+            authPrompt,
+            'setUser',
+            original => {
+                return function (user) {
+                    original.call(this, user);
+                    self._detachProfileImage(this);
+                };
+            }
+        );
+    }
+
+    _clearProfileHideState() {
+        this._profileHidePatched = false;
+        try {
+            const prompt = Main.screenShield?._dialog?._authPrompt;
+            if (prompt)
+                delete prompt._openFliqloAvatarPatched;
+        } catch (_e) {
+            // ignore
+        }
+    }
+
+    _detachProfileImage(authPrompt) {
+        const userWidget = authPrompt?._userWell?.get_child?.();
+        const avatar = userWidget?._avatar;
+        if (!avatar)
+            return;
+
+        try {
+            avatar.hide();
+            avatar.visible = false;
+            avatar.opacity = 0;
+        } catch (_e) {
+            // ignore
+        }
+
+        const parent = avatar.get_parent();
+        if (parent) {
+            try {
+                parent.remove_child(avatar);
+            } catch (_e) {
+                // ignore
+            }
+        }
     }
 
     _detachStockClock(dialog) {
@@ -326,9 +500,6 @@ export default class OpenFliqloLockscreenExtension extends Extension {
         if (!monitor || !this._windowActor)
             return;
 
-        const isLastMonitor =
-            monitorIndex === Main.layoutManager.monitors.length - 1;
-
         if (monitorIndex === 0) {
             for (const actor of this._wrapperActors ?? []) {
                 try {
@@ -339,6 +510,11 @@ export default class OpenFliqloLockscreenExtension extends Extension {
             }
             this._wrapperActors = [];
             this._backgroundCreated = false;
+        }
+
+        if (!this._shouldShowOnMonitor(monitorIndex)) {
+            this._maybeFadeIn(monitorIndex);
+            return;
         }
 
         const wrapper = new Clutter.Actor({reactive: false});
@@ -353,25 +529,44 @@ export default class OpenFliqloLockscreenExtension extends Extension {
         wrapper.set_size(monitor.width, monitor.height);
         wrapper.set_clip_to_allocation(true);
 
-        cloneActor.set_size(this._player.w, this._player.h);
-        cloneActor.set_position(-monitor.x, -monitor.y);
+        // Full flip clock on this monitor (scale to cover; do not crop by
+        // virtual-desktop offset — that put hours on one screen and minutes
+        // on another).
+        const srcW = this._player.w || monitor.width;
+        const srcH = this._player.h || monitor.height;
+        const scale = Math.max(monitor.width / srcW, monitor.height / srcH);
+        const cw = srcW * scale;
+        const ch = srcH * scale;
+        cloneActor.set_size(cw, ch);
+        cloneActor.set_position(
+            (monitor.width - cw) / 2,
+            (monitor.height - ch) / 2
+        );
 
         if (!this._backgroundCreated)
             wrapper.opacity = 0;
 
         this._wrapperActors.push(wrapper);
+        this._maybeFadeIn(monitorIndex);
+    }
 
-        if (!this._backgroundCreated && isLastMonitor) {
-            const duration = this._settings.get_int('fade-in-ms');
-            for (const actor of this._wrapperActors) {
-                actor.ease({
-                    opacity: 255,
-                    duration,
-                    mode: Clutter.AnimationMode.EASE_IN_QUAD,
-                });
-            }
-            this._backgroundCreated = true;
+    _maybeFadeIn(monitorIndex) {
+        const isLastMonitor =
+            monitorIndex === Main.layoutManager.monitors.length - 1;
+        if (this._backgroundCreated || !isLastMonitor)
+            return;
+        if (!this._wrapperActors?.length)
+            return;
+
+        const duration = this._settings.get_int('fade-in-ms');
+        for (const actor of this._wrapperActors) {
+            actor.ease({
+                opacity: 255,
+                duration,
+                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            });
         }
+        this._backgroundCreated = true;
     }
 
     /**
@@ -395,9 +590,12 @@ export default class OpenFliqloLockscreenExtension extends Extension {
             this._windowActor = null;
         }
 
+        this._restoreBottomPrompt();
+
         this._injectionManager?.clear();
         this._injectionManager = null;
         this._clockProgressPatched = false;
+        this._clearProfileHideState();
 
         for (const actor of this._wrapperActors ?? []) {
             try {
@@ -423,9 +621,11 @@ export default class OpenFliqloLockscreenExtension extends Extension {
                 '[OpenFliqloLockscreen] disable() while still locked — keep host'
             );
             // Drop UI hooks for this enable cycle; host process stays alive.
+            // Keep bottom-prompt layout across thrashing; restore only on unlock.
             this._injectionManager?.clear();
             this._injectionManager = null;
             this._clockProgressPatched = false;
+            this._clearProfileHideState();
             for (const actor of this._wrapperActors ?? []) {
                 try {
                     actor.destroy();

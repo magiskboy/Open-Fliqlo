@@ -73,6 +73,79 @@ export default class OpenFliqloLockscreenPrefs extends ExtensionPreferences {
         );
         behaviorGroup.add(hideClock);
 
+        const promptBottom = new Adw.SwitchRow({
+            title: _('Move unlock prompt to bottom'),
+            subtitle: _(
+                'Keep avatar and password below the flip clock'
+            ),
+        });
+        settings.bind(
+            'prompt-at-bottom',
+            promptBottom,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+        behaviorGroup.add(promptBottom);
+
+        const marginRow = new Adw.SpinRow({
+            title: _('Prompt bottom margin'),
+            subtitle: _('Pixels from the bottom edge'),
+            adjustment: new Gtk.Adjustment({
+                lower: 0,
+                upper: 200,
+                step_increment: 4,
+                page_increment: 16,
+                value: settings.get_int('prompt-bottom-margin'),
+            }),
+        });
+        settings.bind(
+            'prompt-bottom-margin',
+            marginRow,
+            'value',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+        behaviorGroup.add(marginRow);
+
+        const hideProfile = new Adw.SwitchRow({
+            title: _('Hide profile image'),
+            subtitle: _('Hide the user avatar on the unlock prompt'),
+        });
+        settings.bind(
+            'hide-profile-image',
+            hideProfile,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+        behaviorGroup.add(hideProfile);
+
+        const monitorMode = new Adw.ComboRow({
+            title: _('Show on monitors'),
+            subtitle: _(
+                'Full flip clock on each selected screen — never split across monitors'
+            ),
+            model: new Gtk.StringList({
+                strings: [
+                    _('Current monitor only'),
+                    _('All monitors'),
+                ],
+            }),
+        });
+        const modeToIndex = mode => (mode === 'all' ? 1 : 0);
+        const indexToMode = index => (index === 1 ? 'all' : 'current');
+        monitorMode.selected = modeToIndex(settings.get_string('monitor-mode'));
+        monitorMode.connect('notify::selected', () => {
+            settings.set_string(
+                'monitor-mode',
+                indexToMode(monitorMode.selected)
+            );
+        });
+        settings.connect('changed::monitor-mode', () => {
+            const next = modeToIndex(settings.get_string('monitor-mode'));
+            if (monitorMode.selected !== next)
+                monitorMode.selected = next;
+        });
+        behaviorGroup.add(monitorMode);
+
         const fadeRow = new Adw.SpinRow({
             title: _('Fade-in duration'),
             subtitle: _('Milliseconds'),

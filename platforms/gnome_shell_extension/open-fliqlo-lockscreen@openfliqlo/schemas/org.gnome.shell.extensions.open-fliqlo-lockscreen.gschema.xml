@@ -17,6 +17,42 @@
         Hide the built-in unlock-dialog clock so only Open Fliqlo is visible.
       </description>
     </key>
+    <key name="prompt-at-bottom" type="b">
+      <default>true</default>
+      <summary>Move unlock prompt to bottom</summary>
+      <description>
+        Pin the user avatar and password field near the bottom of the screen
+        so they do not cover the centered flip clock.
+      </description>
+    </key>
+    <key name="prompt-bottom-margin" type="i">
+      <default>48</default>
+      <summary>Unlock prompt bottom margin (px)</summary>
+      <description>
+        Logical pixels between the unlock prompt and the bottom edge of the
+        primary monitor.
+      </description>
+    </key>
+    <key name="hide-profile-image" type="b">
+      <default>true</default>
+      <summary>Hide unlock profile image</summary>
+      <description>
+        Hide the user avatar on the unlock password prompt so only the name
+        and password field remain.
+      </description>
+    </key>
+    <key name="monitor-mode" type="s">
+      <choices>
+        <choice value='current'/>
+        <choice value='all'/>
+      </choices>
+      <default>'all'</default>
+      <summary>Lock screen monitor mode</summary>
+      <description>
+        Where to show the flip clock: only on the current monitor, or a full
+        copy on every monitor. Never spans one clock across multiple screens.
+      </description>
+    </key>
     <key name="fade-in-ms" type="i">
       <default>400</default>
       <summary>Fade-in duration (ms)</summary>
