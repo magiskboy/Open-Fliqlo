@@ -14,6 +14,13 @@ void main() {
       );
     });
 
+    test('parses lockscreen', () {
+      expect(
+        LaunchModeParser.fromArgs(['--lockscreen']),
+        LaunchMode.lockscreen,
+      );
+    });
+
     test('parses configure and preview', () {
       expect(
         LaunchModeParser.fromArgs(['--configure']),
@@ -31,15 +38,18 @@ void main() {
 
     test('fromName', () {
       expect(LaunchModeParser.fromName('screensaver'), LaunchMode.screensaver);
+      expect(LaunchModeParser.fromName('lockscreen'), LaunchMode.lockscreen);
       expect(LaunchModeParser.fromName('unknown'), LaunchMode.normal);
     });
   });
 
   group('LaunchModeX', () {
-    test('exitOnInput for screensaver and preview', () {
+    test('exitOnInput for screensaver and preview only', () {
       expect(LaunchMode.screensaver.exitOnInput, isTrue);
       expect(LaunchMode.preview.exitOnInput, isTrue);
+      expect(LaunchMode.lockscreen.exitOnInput, isFalse);
       expect(LaunchMode.normal.exitOnInput, isFalse);
+      expect(LaunchMode.lockscreen.isScreensaverLike, isTrue);
       expect(LaunchMode.configure.allowInteractiveGestures, isFalse);
       expect(LaunchMode.normal.allowInteractiveGestures, isTrue);
       expect(LaunchMode.configure.openSettingsOnLaunch, isTrue);

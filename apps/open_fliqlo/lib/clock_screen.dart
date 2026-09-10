@@ -90,7 +90,9 @@ class _ClockScreenState extends State<ClockScreen> {
   }
 
   Future<void> _openSettings() async {
-    if (_mode == LaunchMode.screensaver || _mode == LaunchMode.preview) {
+    if (_mode == LaunchMode.screensaver ||
+        _mode == LaunchMode.lockscreen ||
+        _mode == LaunchMode.preview) {
       return;
     }
     if (_settingsOpen) return;

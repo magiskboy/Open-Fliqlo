@@ -6,6 +6,10 @@ enum LaunchMode {
   /// OS screensaver: fullscreen, exit on input, no settings gestures.
   screensaver,
 
+  /// GNOME lock-screen host: fullscreen flip clock, stay running (no exit on input).
+  /// Used by the GNOME Shell extension which reparents this window into UnlockDialog.
+  lockscreen,
+
   /// Open settings sheet after load (Windows /c, Android dream settings).
   configure,
 
@@ -22,6 +26,8 @@ abstract final class LaunchModeParser {
       final arg = raw.toLowerCase();
       if (arg == '--screensaver' || arg == '-screensaver') {
         mode = LaunchMode.screensaver;
+      } else if (arg == '--lockscreen' || arg == '-lockscreen') {
+        mode = LaunchMode.lockscreen;
       } else if (arg == '--configure' || arg == '-configure') {
         mode = LaunchMode.configure;
       } else if (arg == '--preview' || arg == '-preview') {
@@ -35,6 +41,8 @@ abstract final class LaunchModeParser {
     switch (name?.toLowerCase()) {
       case 'screensaver':
         return LaunchMode.screensaver;
+      case 'lockscreen':
+        return LaunchMode.lockscreen;
       case 'configure':
         return LaunchMode.configure;
       case 'preview':
@@ -47,7 +55,9 @@ abstract final class LaunchModeParser {
 
 extension LaunchModeX on LaunchMode {
   bool get isScreensaverLike =>
-      this == LaunchMode.screensaver || this == LaunchMode.preview;
+      this == LaunchMode.screensaver ||
+      this == LaunchMode.preview ||
+      this == LaunchMode.lockscreen;
 
   bool get exitOnInput =>
       this == LaunchMode.screensaver || this == LaunchMode.preview;

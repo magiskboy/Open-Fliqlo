@@ -1,0 +1,11 @@
+{
+  "uuid": "open-fliqlo-lockscreen@openfliqlo",
+  "name": "Open Fliqlo Lock Screen",
+  "description": "Use Open Fliqlo as the GNOME lock screen background. Spawns open_fliqlo --lockscreen while locked and embeds its window into UnlockDialog. Uses unlock-dialog session mode only (same pattern as Live Lock Screen).",
+  "version-name": "1.0.1",
+  "shell-version": ["46", "47", "48", "49", "50"],
+  "session-modes": ["unlock-dialog"],
+  "settings-schema": "org.gnome.shell.extensions.open-fliqlo-lockscreen",
+  "url": "https://github.com/openfliqlo/open-fliqlo",
+  "gettext-domain": "open-fliqlo-lockscreen@openfliqlo"
+}

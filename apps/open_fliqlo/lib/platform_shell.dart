@@ -49,7 +49,8 @@ abstract final class PlatformShell {
       return;
     }
 
-    final skipTaskbar = mode == LaunchMode.screensaver;
+    final skipTaskbar =
+        mode == LaunchMode.screensaver || mode == LaunchMode.lockscreen;
     await windowManager.waitUntilReadyToShow(
       WindowOptions(
         backgroundColor: const Color(0xFF000000),

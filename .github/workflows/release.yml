@@ -54,7 +54,8 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev
+            libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libglib2.0-bin zip
 
       - uses: subosito/flutter-action@v2
         with:
@@ -72,24 +73,32 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           ARTIFACT_BASE="OpenFliqlo-linux-x64-${TAG}"
           BUNDLE="apps/open_fliqlo/build/linux/x64/release/bundle"
+          EXT_ZIP_NAME="open-fliqlo-lockscreen@openfliqlo.shell-extension.zip"
           STAGE="$(mktemp -d)"
-          mkdir -p "$STAGE/$ARTIFACT_BASE"
+          mkdir -p "$STAGE/$ARTIFACT_BASE/gnome-extension"
           cp -a "$BUNDLE/." "$STAGE/$ARTIFACT_BASE/"
           cp packaging/linux/open-fliqlo-screensaver.desktop "$STAGE/$ARTIFACT_BASE/" || true
           cp packaging/linux/idle-launch-screensaver.sh "$STAGE/$ARTIFACT_BASE/" || true
+          ./platforms/gnome_shell_extension/pack.sh "$STAGE/$ARTIFACT_BASE/gnome-extension"
+          cp platforms/gnome_shell_extension/install.sh "$STAGE/$ARTIFACT_BASE/gnome-extension/"
           printf '%s\n' \
             'Open Fliqlo (Linux)' \
             "Version: ${TAG}" \
             'Run:           ./open_fliqlo' \
             'Screensaver:   ./open_fliqlo --screensaver' \
+            'Lock screen:   gnome-extensions install gnome-extension/'"${EXT_ZIP_NAME}" \
             > "$STAGE/$ARTIFACT_BASE/README-linux.txt"
           mkdir -p dist
           tar -C "$STAGE" -czf "dist/${ARTIFACT_BASE}.tar.gz" "$ARTIFACT_BASE"
+          cp "$STAGE/$ARTIFACT_BASE/gnome-extension/${EXT_ZIP_NAME}" \
+            "dist/open-fliqlo-lockscreen@openfliqlo-${TAG}.shell-extension.zip"
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: dist/*.tar.gz
+          path: |
+            dist/*.tar.gz
+            dist/*.shell-extension.zip
           if-no-files-found: error
 
   build-windows:
@@ -255,12 +264,13 @@ jobs:
 
             | File | Platform |
             |---|---|
-            | `OpenFliqlo-linux-x64-*.tar.gz` | Linux desktop (+ screensaver helpers) |
+            | `OpenFliqlo-linux-x64-*.tar.gz` | Linux desktop (+ screensaver helpers + GNOME lock-screen extension) |
+            | `open-fliqlo-lockscreen@openfliqlo-*.shell-extension.zip` | GNOME Shell lock-screen extension only |
             | `OpenFliqlo-windows-x64-*.zip` | Windows app + `OpenFliqlo.scr` |
             | `OpenFliqlo-android-*.apk` | Android (debug-keystore signed until release key is set) |
             | `OpenFliqlo-ios-unsigned-*.ipa` | iOS unsigned — not installable without Ad Hoc signing |
 
-            See [docs/ci.md](docs/ci.md) for install notes.
+            See [docs/ci.md](docs/ci.md) and [docs/lockscreen-gnome.md](docs/lockscreen-gnome.md) for install notes.
           files: |
             release-assets/**
         env:

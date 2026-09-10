@@ -19,9 +19,10 @@ Cross-platform fullscreen flip clock for **iOS**, **Android**, **Windows**, and 
 | **Windows** | `OpenFliqlo.scr` → `open_fliqlo.exe --screensaver` | [screensaver-windows.md](docs/screensaver-windows.md) |
 | **Android** | `DreamService` (system Screen saver) | [screensaver-android.md](docs/screensaver-android.md) |
 | **Linux GNOME** | `--screensaver` + idle script / `.desktop` | [screensaver-gnome.md](docs/screensaver-gnome.md) |
+| **Linux GNOME lock** | Shell extension + `--lockscreen` | [lockscreen-gnome.md](docs/lockscreen-gnome.md) |
 | **iOS** | Flip clock **app only** (no system screensaver API) | [ios-ci.md](docs/ios-ci.md) |
 
-Shared modes: `--screensaver`, `--configure`, `--preview` (see S0 in app `LaunchMode`).
+Shared modes: `--screensaver`, `--lockscreen`, `--configure`, `--preview` (see S0 in app `LaunchMode`).
 
 ## Structure
 
@@ -30,8 +31,9 @@ apps/open_fliqlo/           Flutter app (iOS/Android/Windows/Linux)
 packages/fliqlo_core/       Clock engine + settings
 packages/fliqlo_ui/         FlipDigit, ClockFace, SettingsSheet
 platforms/windows_scr/      .scr host (.NET)
+platforms/gnome_shell_extension/  GNOME lock-screen extension
 packaging/linux/            .desktop + idle-launch script
-docs/                       Behavior + screensaver guides
+docs/                       Behavior + screensaver / lock-screen guides
 ```
 
 ## Prerequisites

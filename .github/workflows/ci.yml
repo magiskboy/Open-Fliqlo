@@ -40,3 +40,26 @@ jobs:
           cd packages/fliqlo_core && flutter test
           cd ../fliqlo_ui && flutter test
           cd ../../apps/open_fliqlo && flutter test
+
+  gnome-extension:
+    name: GNOME extension pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pack dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libglib2.0-bin zip
+
+      - name: Pack extension
+        run: |
+          mkdir -p dist
+          ./platforms/gnome_shell_extension/pack.sh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: open-fliqlo-lockscreen-gnome-extension
+          path: dist/*.shell-extension.zip
+          if-no-files-found: error
+          retention-days: 14

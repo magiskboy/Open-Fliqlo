@@ -1,0 +1,6 @@
+/* Hide stock unlock-dialog clock if Shell re-attaches it. */
+.unlock-dialog-clock {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}

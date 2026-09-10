@@ -15,6 +15,7 @@ pubspec.lock
 **/build/
 **/coverage/
 **/.cxx/
+platforms/gnome_shell_extension/dist/
 
 # Platform
 **/linux/flutter/ephemeral/

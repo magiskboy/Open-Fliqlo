@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.open-fliqlo-lockscreen"
+          path="/org/gnome/shell/extensions/open-fliqlo-lockscreen/">
+    <key name="binary-path" type="s">
+      <default>''</default>
+      <summary>Path to open_fliqlo binary</summary>
+      <description>
+        Absolute path to the Open Fliqlo executable. Leave empty to resolve
+        open_fliqlo from PATH.
+      </description>
+    </key>
+    <key name="hide-stock-clock" type="b">
+      <default>true</default>
+      <summary>Hide GNOME lock-screen clock</summary>
+      <description>
+        Hide the built-in unlock-dialog clock so only Open Fliqlo is visible.
+      </description>
+    </key>
+    <key name="fade-in-ms" type="i">
+      <default>400</default>
+      <summary>Fade-in duration (ms)</summary>
+      <description>Milliseconds to fade the Fliqlo background in after lock.</description>
+    </key>
+    <key name="window-timeout-ms" type="i">
+      <default>20000</default>
+      <summary>Window wait timeout (ms)</summary>
+      <description>
+        How long to wait for the Open Fliqlo window after spawning the process.
+      </description>
+    </key>
+  </schema>
+</schemalist>
