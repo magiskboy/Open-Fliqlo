@@ -1,16 +1,32 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'settings.dart';
 
 /// Persists [FliqloSettings] via [SharedPreferences].
+///
+/// [update] applies settings in memory immediately and debounces disk writes.
+/// [commit] / [flush] write through right away (toggles, slider end, dispose).
 class SettingsStore extends ChangeNotifier {
-  SettingsStore({SharedPreferences? prefs}) : _prefsOverride = prefs;
+  SettingsStore({
+    SharedPreferences? prefs,
+    this.persistDebounce = defaultPersistDebounce,
+  }) : _prefsOverride = prefs;
+
+  /// Default delay before a debounced [update] hits disk.
+  static const Duration defaultPersistDebounce = Duration(milliseconds: 250);
 
   final SharedPreferences? _prefsOverride;
+  final Duration persistDebounce;
+
   SharedPreferences? _prefs;
   FliqloSettings _settings = const FliqloSettings();
   bool _loaded = false;
+  Timer? _persistTimer;
+  Future<void>? _persistInFlight;
+  bool _disposed = false;
 
   FliqloSettings get settings => _settings;
   bool get isLoaded => _loaded;
@@ -37,10 +53,78 @@ class SettingsStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> update(FliqloSettings next) async {
+  /// Updates memory and notifies listeners; schedules a debounced persist.
+  void update(FliqloSettings next) {
+    if (_disposed) return;
     _settings = next;
     notifyListeners();
-    final p = _prefs ?? await SharedPreferences.getInstance();
+    _schedulePersist();
+  }
+
+  /// Updates memory, notifies, and persists immediately (cancels debounce).
+  Future<void> commit(FliqloSettings next) async {
+    if (_disposed) return;
+    _settings = next;
+    notifyListeners();
+    await flush();
+  }
+
+  /// Writes the current in-memory settings to disk now.
+  Future<void> flush() async {
+    _persistTimer?.cancel();
+    _persistTimer = null;
+    await _persistNow(_settings);
+  }
+
+  Future<void> patch({
+    bool? use24Hour,
+    bool? showSeconds,
+    double? dim,
+    double? scale,
+    bool? showFlaps,
+    bool? forceLandscape,
+  }) {
+    return commit(
+      _settings.copyWith(
+        use24Hour: use24Hour,
+        showSeconds: showSeconds,
+        dim: dim,
+        scale: scale,
+        showFlaps: showFlaps,
+        forceLandscape: forceLandscape,
+      ),
+    );
+  }
+
+  void _schedulePersist() {
+    if (_disposed) return;
+    _persistTimer?.cancel();
+    _persistTimer = Timer(persistDebounce, () {
+      _persistTimer = null;
+      if (_disposed) return;
+      unawaited(_persistNow(_settings));
+    });
+  }
+
+  Future<void> _persistNow(FliqloSettings next) async {
+    // Serialize writes so overlapping flush/commit don't interleave.
+    while (_persistInFlight != null) {
+      await _persistInFlight;
+    }
+
+    final future = _writePrefs(next);
+    _persistInFlight = future;
+    try {
+      await future;
+    } finally {
+      if (_persistInFlight == future) {
+        _persistInFlight = null;
+      }
+    }
+  }
+
+  Future<void> _writePrefs(FliqloSettings next) async {
+    final p = _prefs ?? _prefsOverride ?? await SharedPreferences.getInstance();
     _prefs = p;
     await Future.wait([
       p.setBool(_kUse24Hour, next.use24Hour),
@@ -52,23 +136,11 @@ class SettingsStore extends ChangeNotifier {
     ]);
   }
 
-  Future<void> patch({
-    bool? use24Hour,
-    bool? showSeconds,
-    double? dim,
-    double? scale,
-    bool? showFlaps,
-    bool? forceLandscape,
-  }) {
-    return update(
-      _settings.copyWith(
-        use24Hour: use24Hour,
-        showSeconds: showSeconds,
-        dim: dim,
-        scale: scale,
-        showFlaps: showFlaps,
-        forceLandscape: forceLandscape,
-      ),
-    );
+  @override
+  void dispose() {
+    _disposed = true;
+    _persistTimer?.cancel();
+    _persistTimer = null;
+    super.dispose();
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fliqlo_core/fliqlo_core.dart';
 import 'package:fliqlo_ui/fliqlo_ui.dart';
 import 'package:flutter/material.dart';
@@ -72,12 +74,13 @@ class _ClockScreenState extends State<ClockScreen> {
     if (s.forceLandscape != _forceLandscapeApplied) {
       _applyOrientation(s.forceLandscape);
     }
-    setState(() {});
   }
 
   @override
   void dispose() {
     _store.removeListener(_onSettingsChanged);
+    final store = _store;
+    unawaited(store.flush().whenComplete(store.dispose));
     _engine?.dispose();
     PlatformShell.disableKeepAwake();
     super.dispose();
@@ -114,7 +117,8 @@ class _ClockScreenState extends State<ClockScreen> {
             builder: (context, _) {
               return SettingsSheet(
                 settings: _store.settings,
-                onChanged: (s) => _store.update(s),
+                onChanged: _store.update,
+                onCommit: (s) => unawaited(_store.commit(s)),
               );
             },
           ),
@@ -122,6 +126,7 @@ class _ClockScreenState extends State<ClockScreen> {
       },
     );
     _settingsOpen = false;
+    await _store.flush();
     await PlatformShell.enterImmersive();
     // Configure mode: closing settings exits (Windows /c UX).
     if (_mode == LaunchMode.configure && mounted) {

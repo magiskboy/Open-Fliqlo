@@ -2,12 +2,14 @@ import 'dart:math' as math;
 
 import 'package:fliqlo_core/fliqlo_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
+import 'digit_glyph_atlas.dart';
 import 'flip_digit.dart';
 import 'theme.dart';
 
 /// Full flip-clock face: digits, optional seconds, AM/PM, dim overlay.
-class ClockFace extends StatelessWidget {
+class ClockFace extends StatefulWidget {
   const ClockFace({
     super.key,
     required this.snapshot,
@@ -18,13 +20,45 @@ class ClockFace extends StatelessWidget {
   final FliqloSettings settings;
 
   @override
+  State<ClockFace> createState() => _ClockFaceState();
+}
+
+class _ClockFaceState extends State<ClockFace> {
+  final DigitGlyphAtlas _atlas = DigitGlyphAtlas();
+  Size? _pendingDigitSize;
+  double? _pendingDpr;
+  bool _ensureScheduled = false;
+
+  @override
+  void dispose() {
+    _atlas.dispose();
+    super.dispose();
+  }
+
+  void _scheduleAtlasEnsure(Size digitSize, double dpr) {
+    if (_atlas.matches(digitSize, dpr)) return;
+    _pendingDigitSize = digitSize;
+    _pendingDpr = dpr;
+    if (_ensureScheduled) return;
+    _ensureScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _ensureScheduled = false;
+      if (!mounted) return;
+      final size = _pendingDigitSize;
+      final ratio = _pendingDpr;
+      if (size == null || ratio == null) return;
+      _atlas.ensure(digitSize: size, dpr: ratio);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
         final maxHeight = constraints.maxHeight;
-        final showSeconds = settings.showSeconds;
-        final amPm = snapshot.amPmLabel;
+        final showSeconds = widget.settings.showSeconds;
+        final amPm = widget.snapshot.amPmLabel;
 
         final digitCount = showSeconds ? 6 : 4;
         final colonCount = showSeconds ? 2 : 1;
@@ -37,7 +71,7 @@ class ClockFace extends StatelessWidget {
         // Scale is applied to digit metrics (not Transform.scale) so each
         // RepaintBoundary stays a stable, independently cached layer.
         const edgePad = 0.02;
-        final scale = settings.scale.clamp(0.5, 1.0);
+        final scale = widget.settings.scale.clamp(0.5, 1.0);
         final availW = maxWidth * (1 - edgePad * 2);
         final availH = maxHeight * (1 - edgePad * 2);
         const digitAspect = 0.72; // width / height
@@ -46,81 +80,95 @@ class ClockFace extends StatelessWidget {
         final digitWidth = digitHeight * digitAspect;
         final gap = digitWidth * 0.12;
         final colonWidth = digitWidth * 0.36;
+        final digitSize = Size(digitWidth, digitHeight);
+        final dpr = MediaQuery.devicePixelRatioOf(context);
 
-        Widget digit(int value, {String? amPmOverlay, bool isPm = false}) {
-          return RepaintBoundary(
-            child: SizedBox(
-              width: digitWidth,
-              height: digitHeight,
+        _scheduleAtlasEnsure(digitSize, dpr);
+
+        return ListenableBuilder(
+          listenable: _atlas,
+          builder: (context, _) {
+            Widget digit(int value, {String? amPmOverlay, bool isPm = false}) {
+              return RepaintBoundary(
+                child: SizedBox(
+                  width: digitWidth,
+                  height: digitHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      FlipDigit(
+                        digit: value,
+                        showFlaps: widget.settings.showFlaps,
+                        atlas: _atlas,
+                      ),
+                      if (amPmOverlay != null)
+                        CustomPaint(
+                          painter: _AmPmPainter(
+                            label: amPmOverlay,
+                            isPm: isPm,
+                            atlas: _atlas,
+                            atlasGeneration: _atlas.generation,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            Widget colon() {
+              return RepaintBoundary(
+                child: SizedBox(
+                  width: colonWidth,
+                  height: digitHeight,
+                  child: CustomPaint(
+                    painter: _ColonPainter(sizeFactor: digitHeight),
+                  ),
+                ),
+              );
+            }
+
+            final row = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                digit(
+                  widget.snapshot.hourTens,
+                  amPmOverlay: amPm,
+                  isPm: widget.snapshot.isPm,
+                ),
+                SizedBox(width: gap),
+                digit(widget.snapshot.hourOnes),
+                colon(),
+                digit(widget.snapshot.minuteTens),
+                SizedBox(width: gap),
+                digit(widget.snapshot.minuteOnes),
+                if (showSeconds) ...[
+                  colon(),
+                  digit(widget.snapshot.secondTens),
+                  SizedBox(width: gap),
+                  digit(widget.snapshot.secondOnes),
+                ],
+              ],
+            );
+
+            return ColoredBox(
+              color: FliqloTheme.background,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  FlipDigit(
-                    digit: value,
-                    showFlaps: settings.showFlaps,
-                  ),
-                  if (amPmOverlay != null)
-                    CustomPaint(
-                      painter: _AmPmPainter(
-                        label: amPmOverlay,
-                        isPm: isPm,
+                  Center(child: row),
+                  if (widget.settings.dim > 0)
+                    IgnorePointer(
+                      child: ColoredBox(
+                        color: Colors.black.withValues(
+                          alpha: widget.settings.dim,
+                        ),
                       ),
                     ),
                 ],
               ),
-            ),
-          );
-        }
-
-        Widget colon() {
-          return RepaintBoundary(
-            child: SizedBox(
-              width: colonWidth,
-              height: digitHeight,
-              child: CustomPaint(
-                painter: _ColonPainter(sizeFactor: digitHeight),
-              ),
-            ),
-          );
-        }
-
-        final row = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            digit(
-              snapshot.hourTens,
-              amPmOverlay: amPm,
-              isPm: snapshot.isPm,
-            ),
-            SizedBox(width: gap),
-            digit(snapshot.hourOnes),
-            colon(),
-            digit(snapshot.minuteTens),
-            SizedBox(width: gap),
-            digit(snapshot.minuteOnes),
-            if (showSeconds) ...[
-              colon(),
-              digit(snapshot.secondTens),
-              SizedBox(width: gap),
-              digit(snapshot.secondOnes),
-            ],
-          ],
-        );
-
-        return ColoredBox(
-          color: FliqloTheme.background,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Center(child: row),
-              if (settings.dim > 0)
-                IgnorePointer(
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: settings.dim),
-                  ),
-                ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -129,45 +177,28 @@ class ClockFace extends StatelessWidget {
 
 /// Draws AM/PM in the corner of the hour-tens flap (Gluqlo-style), above the digit.
 class _AmPmPainter extends CustomPainter {
-  _AmPmPainter({required this.label, required this.isPm});
+  _AmPmPainter({
+    required this.label,
+    required this.isPm,
+    required this.atlas,
+    required this.atlasGeneration,
+  });
 
   final String label;
   final bool isPm;
+  final DigitGlyphAtlas atlas;
+  final int atlasGeneration;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final fontSize = size.height * 0.11;
-    final text = TextPainter(
-      text: TextSpan(
-        text: label,
-        style: TextStyle(
-          color: FliqloTheme.digitForeground,
-          fontSize: fontSize,
-          fontWeight: FontWeight.w400,
-          height: 1,
-          fontFamily: FliqloTheme.digitFontFamily,
-          package: FliqloTheme.digitFontPackage,
-          shadows: const [
-            Shadow(color: Color(0xFF000000), blurRadius: 2, offset: Offset(0, 0)),
-            Shadow(color: Color(0xFF000000), blurRadius: 4, offset: Offset(1, 1)),
-          ],
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    final dx = size.height * 0.07;
-    final dy = size.height * 0.10;
-    final offset = Offset(
-      dx,
-      isPm ? size.height - dy - text.height : dy,
-    );
-    text.paint(canvas, offset);
+    atlas.paintAmPm(canvas, size, label: label, isPm: isPm);
   }
 
   @override
   bool shouldRepaint(covariant _AmPmPainter oldDelegate) =>
-      oldDelegate.label != label || oldDelegate.isPm != isPm;
+      oldDelegate.label != label ||
+      oldDelegate.isPm != isPm ||
+      oldDelegate.atlasGeneration != atlasGeneration;
 }
 
 class _ColonPainter extends CustomPainter {

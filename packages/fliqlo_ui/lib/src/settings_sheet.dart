@@ -9,15 +9,24 @@ class SettingsSheet extends StatelessWidget {
     super.key,
     required this.settings,
     required this.onChanged,
+    this.onCommit,
   });
 
   final FliqloSettings settings;
+
+  /// Preview / in-memory updates (e.g. every slider tick).
   final ValueChanged<FliqloSettings> onChanged;
+
+  /// Immediate persist path for toggles and slider [onChangeEnd].
+  ///
+  /// Falls back to [onChanged] when null.
+  final ValueChanged<FliqloSettings>? onCommit;
 
   static Future<void> show(
     BuildContext context, {
     required FliqloSettings settings,
     required ValueChanged<FliqloSettings> onChanged,
+    ValueChanged<FliqloSettings>? onCommit,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -31,11 +40,17 @@ class SettingsSheet extends StatelessWidget {
           padding: EdgeInsets.only(
             bottom: MediaQuery.viewInsetsOf(context).bottom,
           ),
-          child: SettingsSheet(settings: settings, onChanged: onChanged),
+          child: SettingsSheet(
+            settings: settings,
+            onChanged: onChanged,
+            onCommit: onCommit,
+          ),
         );
       },
     );
   }
+
+  void _commit(FliqloSettings next) => (onCommit ?? onChanged)(next);
 
   @override
   Widget build(BuildContext context) {
@@ -75,26 +90,26 @@ class SettingsSheet extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('24-hour clock'),
                 value: settings.use24Hour,
-                onChanged: (v) => onChanged(settings.copyWith(use24Hour: v)),
+                onChanged: (v) => _commit(settings.copyWith(use24Hour: v)),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Show seconds'),
                 value: settings.showSeconds,
-                onChanged: (v) => onChanged(settings.copyWith(showSeconds: v)),
+                onChanged: (v) => _commit(settings.copyWith(showSeconds: v)),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Show flaps'),
                 value: settings.showFlaps,
-                onChanged: (v) => onChanged(settings.copyWith(showFlaps: v)),
+                onChanged: (v) => _commit(settings.copyWith(showFlaps: v)),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Force landscape'),
                 value: settings.forceLandscape,
                 onChanged: (v) =>
-                    onChanged(settings.copyWith(forceLandscape: v)),
+                    _commit(settings.copyWith(forceLandscape: v)),
               ),
               const SizedBox(height: 8),
               Text(
@@ -106,6 +121,7 @@ class SettingsSheet extends StatelessWidget {
                 min: 0,
                 max: 0.8,
                 onChanged: (v) => onChanged(settings.copyWith(dim: v)),
+                onChangeEnd: (v) => _commit(settings.copyWith(dim: v)),
               ),
               Text(
                 'Scale (${(settings.scale * 100).round()}%)',
@@ -116,6 +132,7 @@ class SettingsSheet extends StatelessWidget {
                 min: 0.5,
                 max: 1.0,
                 onChanged: (v) => onChanged(settings.copyWith(scale: v)),
+                onChangeEnd: (v) => _commit(settings.copyWith(scale: v)),
               ),
             ],
           ),

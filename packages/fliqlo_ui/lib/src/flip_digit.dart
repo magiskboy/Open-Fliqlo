@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'digit_glyph_atlas.dart';
 import 'theme.dart';
 
 /// A single flip-clock digit with a hinged flap animation.
@@ -11,12 +12,16 @@ class FlipDigit extends StatefulWidget {
     required this.digit,
     this.showFlaps = true,
     this.duration = FliqloTheme.flipDuration,
+    this.atlas,
   });
 
   /// Target digit (0–9).
   final int digit;
   final bool showFlaps;
   final Duration duration;
+
+  /// Optional shared raster glyph cache; falls back to [TextPainter] if null.
+  final DigitGlyphAtlas? atlas;
 
   @override
   State<FlipDigit> createState() => _FlipDigitState();
@@ -68,6 +73,8 @@ class _FlipDigitState extends State<FlipDigit>
             to: _to,
             progress: t,
             showFlaps: widget.showFlaps,
+            atlas: widget.atlas,
+            atlasGeneration: widget.atlas?.generation ?? 0,
           ),
           child: const SizedBox.expand(),
         );
@@ -83,12 +90,16 @@ class FlipDigitPainter extends CustomPainter {
     required this.to,
     required this.progress,
     required this.showFlaps,
+    this.atlas,
+    this.atlasGeneration = 0,
   });
 
   final int from;
   final int to;
   final double progress;
   final bool showFlaps;
+  final DigitGlyphAtlas? atlas;
+  final int atlasGeneration;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -203,27 +214,12 @@ class FlipDigitPainter extends CustomPainter {
   }
 
   void _paintDigit(Canvas canvas, Size size, int digit) {
-    final text = TextPainter(
-      text: TextSpan(
-        text: '$digit',
-        style: TextStyle(
-          color: FliqloTheme.digitForeground,
-          fontSize: size.height * 0.70,
-          fontWeight: FontWeight.w400,
-          height: 1,
-          fontFamily: FliqloTheme.digitFontFamily,
-          package: FliqloTheme.digitFontPackage,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    text.paint(
-      canvas,
-      Offset(
-        (size.width - text.width) / 2,
-        (size.height - text.height) / 2,
-      ),
-    );
+    final cache = atlas;
+    if (cache != null) {
+      cache.paintDigit(canvas, size, digit);
+      return;
+    }
+    DigitGlyphAtlas.paintDigitFallback(canvas, size, digit);
   }
 
   @override
@@ -231,6 +227,8 @@ class FlipDigitPainter extends CustomPainter {
     return oldDelegate.from != from ||
         oldDelegate.to != to ||
         oldDelegate.progress != progress ||
-        oldDelegate.showFlaps != showFlaps;
+        oldDelegate.showFlaps != showFlaps ||
+        oldDelegate.atlas != atlas ||
+        oldDelegate.atlasGeneration != atlasGeneration;
   }
 }

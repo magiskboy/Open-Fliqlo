@@ -40,11 +40,33 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.byType(ClockFace), findsOneWidget);
     expect(find.text('AM'), findsNothing);
     expect(find.text('PM'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  test('DigitGlyphAtlas rasters 0-9 and AM/PM once per size', () async {
+    final atlas = DigitGlyphAtlas();
+    addTearDown(atlas.dispose);
+
+    var notifications = 0;
+    atlas.addListener(() => notifications++);
+
+    const size = Size(72, 100);
+    await atlas.ensure(digitSize: size, dpr: 1);
+    expect(atlas.isReady, isTrue);
+    expect(notifications, 1);
+
+    await atlas.ensure(digitSize: size, dpr: 1);
+    expect(notifications, 1);
+
+    await atlas.ensure(digitSize: const Size(80, 110), dpr: 1);
+    expect(atlas.isReady, isTrue);
+    expect(notifications, 2);
   });
 
   testWidgets('ClockFace shows AM/PM in 12-hour mode', (tester) async {
@@ -62,6 +84,8 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
     // AM/PM is drawn via CustomPainter (not a Text widget).
     expect(find.byType(CustomPaint), findsWidgets);
@@ -84,6 +108,8 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
     // 4 digits + 1 colon (no seconds).
     expect(find.byType(RepaintBoundary), findsAtLeastNWidgets(5));
@@ -107,6 +133,8 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
     final digits = find.byType(FlipDigit);
     final left = tester.getTopLeft(digits.at(0)).dx;
@@ -131,6 +159,8 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
       return tester.getSize(find.byType(FlipDigit).first);
     }
 

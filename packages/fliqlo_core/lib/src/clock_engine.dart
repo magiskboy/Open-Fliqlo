@@ -10,6 +10,9 @@ import 'flip_state.dart';
 ///
 /// Flip *progress* is owned by the UI ([AnimationController]); this engine
 /// detects digit transitions and exposes from→to pairs in [ClockSnapshot.flips].
+///
+/// Ticking uses wall-clock-aligned one-shot [Timer]s (not a fixed poll interval):
+/// next second when [showSeconds] is true, otherwise next minute.
 class ClockEngine extends ChangeNotifier {
   ClockEngine({
     bool use24Hour = true,
@@ -19,18 +22,55 @@ class ClockEngine extends ChangeNotifier {
         _showSeconds = showSeconds,
         _clock = clock ?? DateTime.now;
 
+  /// Extra delay past the wall-clock boundary so [DateTime] has advanced on
+  /// every platform before we sample digits.
+  static const Duration boundarySlop = Duration(milliseconds: 16);
+
+  /// Floor for one-shot delays (avoids zero/negative [Timer] edge cases).
+  static const Duration minScheduleDelay = Duration(milliseconds: 1);
+
   final DateTime Function() _clock;
 
   bool _use24Hour;
   bool _showSeconds;
   Timer? _timer;
+  bool _running = false;
   ClockSnapshot? _snapshot;
   FlipStateMap _flips = {};
 
   ClockSnapshot? get snapshot => _snapshot;
   bool get use24Hour => _use24Hour;
   bool get showSeconds => _showSeconds;
-  bool get isRunning => _timer != null;
+  bool get isRunning => _running;
+
+  /// Delay from [now] until the next display boundary (+ [boundarySlop]).
+  static Duration delayUntilNextBoundary(
+    DateTime now, {
+    required bool showSeconds,
+  }) {
+    final Duration elapsedInPeriod;
+    final Duration period;
+    if (showSeconds) {
+      period = const Duration(seconds: 1);
+      elapsedInPeriod = Duration(
+        milliseconds: now.millisecond,
+        microseconds: now.microsecond,
+      );
+    } else {
+      period = const Duration(minutes: 1);
+      elapsedInPeriod = Duration(
+        seconds: now.second,
+        milliseconds: now.millisecond,
+        microseconds: now.microsecond,
+      );
+    }
+
+    var delay = period - elapsedInPeriod + boundarySlop;
+    if (delay < minScheduleDelay) {
+      delay = minScheduleDelay;
+    }
+    return delay;
+  }
 
   void updateOptions({bool? use24Hour, bool? showSeconds}) {
     var changed = false;
@@ -44,17 +84,21 @@ class ClockEngine extends ChangeNotifier {
     }
     if (changed) {
       _tick(force: true);
-      _restartTimer();
+      if (_running) {
+        _scheduleNext();
+      }
     }
   }
 
   void start() {
-    if (_timer != null) return;
+    if (_running) return;
+    _running = true;
     _tick(force: true);
-    _restartTimer();
+    _scheduleNext();
   }
 
   void stop() {
+    _running = false;
     _timer?.cancel();
     _timer = null;
   }
@@ -62,11 +106,23 @@ class ClockEngine extends ChangeNotifier {
   /// Recompute digits from the clock (used by tests and manual refresh).
   void refresh() => _tick();
 
-  void _restartTimer() {
+  void _scheduleNext() {
     _timer?.cancel();
-    final interval =
-        _showSeconds ? const Duration(milliseconds: 200) : const Duration(seconds: 1);
-    _timer = Timer.periodic(interval, (_) => _tick());
+    if (!_running) {
+      _timer = null;
+      return;
+    }
+    final delay = delayUntilNextBoundary(
+      _clock(),
+      showSeconds: _showSeconds,
+    );
+    _timer = Timer(delay, _onScheduledTick);
+  }
+
+  void _onScheduledTick() {
+    if (!_running) return;
+    _tick();
+    _scheduleNext();
   }
 
   void _tick({bool force = false}) {
