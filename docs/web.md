@@ -36,7 +36,8 @@ python3 -m http.server 8080
 | `pull_request` | yes | no |
 | `push` to `main` | yes | yes (needs secrets) |
 | `workflow_dispatch` | yes | yes |
-| Called from Release | optional | optional |
+| Called from Release | — (release inlines web build) | yes (inline in release.yml) |
+
 
 ### Required GitHub configuration
 

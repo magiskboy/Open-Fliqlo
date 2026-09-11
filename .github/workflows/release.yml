@@ -238,11 +238,48 @@ jobs:
   build-web:
     name: Web Wasm + extensions
     needs: test
-    uses: ./.github/workflows/web.yml
-    secrets: inherit
-    with:
-      version: ${{ github.ref_name }}
-      deploy_pages: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build web Wasm
+        run: ./scripts/build_web_wasm.sh
+
+      - name: Package Cloudflare + Chrome + Firefox
+        run: ./scripts/pack_web_targets.sh dist/web "${GITHUB_REF_NAME}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: |
+            dist/web/OpenFliqlo-chrome-extension-*.zip
+            dist/web/OpenFliqlo-firefox-extension-*.zip
+            dist/web/OpenFliqlo-web-*.tar.gz
+          if-no-files-found: error
+
+      - name: Deploy Cloudflare Pages
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+            echo "Skipping Cloudflare deploy: secrets not set."
+            exit 0
+          fi
+          PROJECT="${{ vars.CLOUDFLARE_PAGES_PROJECT }}"
+          if [[ -z "${PROJECT}" ]]; then
+            PROJECT="open-fliqlo"
+          fi
+          npx --yes wrangler@4 pages deploy dist/web/cloudflare-pages \
+            --project-name="${PROJECT}" \
+            --branch="${GITHUB_REF_NAME}"
 
   publish:
     name: Create GitHub Release
