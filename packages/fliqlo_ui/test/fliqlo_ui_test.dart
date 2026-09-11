@@ -199,6 +199,137 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('ClockFace vertical layout renders without overflow in portrait',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 800,
+            child: ClockFace(
+              snapshot: _snap(),
+              settings: const FliqloSettings(layout: ClockLayout.vertical),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byType(ClockFace), findsOneWidget);
+    expect(find.byType(FlipDigit), findsNWidgets(4));
+    expect(find.byType(Column), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ClockFace vertical layout with seconds fits landscape',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 400,
+            child: ClockFace(
+              snapshot: _snap(),
+              settings: const FliqloSettings(
+                layout: ClockLayout.vertical,
+                showSeconds: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byType(FlipDigit), findsNWidgets(6));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ClockFace debounces onDigitFlip across simultaneous flips',
+      (tester) async {
+    var flips = 0;
+    final snap1 = _snap();
+    final snap2 = ClockSnapshot(
+      now: DateTime(2026, 9, 9, 10, 0),
+      hourTens: 1,
+      hourOnes: 0,
+      minuteTens: 0,
+      minuteOnes: 0,
+      secondTens: 0,
+      secondOnes: 0,
+      flips: {
+        for (final s in DigitSlot.values) s: FlipState.settled(0),
+      },
+      showSeconds: false,
+      use24Hour: true,
+      isPm: false,
+    );
+
+    late StateSetter setFaceState;
+    var snapshot = snap1;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                setFaceState = setState;
+                return ClockFace(
+                  snapshot: snapshot,
+                  settings: const FliqloSettings(),
+                  onDigitFlip: () => flips++,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(flips, 0);
+
+    setFaceState(() => snapshot = snap2);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(flips, 1);
+  });
+
+  testWidgets('SettingsSheet exposes vertical layout and flip sound toggles',
+      (tester) async {
+    var latest = const FliqloSettings();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: SettingsSheet(
+            settings: latest,
+            onChanged: (s) => latest = s,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Vertical layout'), findsOneWidget);
+    expect(find.text('Flip sound'), findsOneWidget);
+
+    await tester.tap(find.text('Vertical layout'));
+    await tester.pumpAndSettle();
+    expect(latest.layout, ClockLayout.vertical);
+
+    await tester.tap(find.text('Flip sound'));
+    await tester.pumpAndSettle();
+    expect(latest.enableFlipSound, isTrue);
+  });
+
   testWidgets('SettingsSheet exposes force landscape toggle', (tester) async {
     var latest = const FliqloSettings();
     await tester.pumpWidget(

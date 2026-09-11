@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:fliqlo_core/fliqlo_core.dart';
 import 'package:fliqlo_ui/fliqlo_ui.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class ClockScreen extends StatefulWidget {
 
 class _ClockScreenState extends State<ClockScreen> {
   final SettingsStore _store = SettingsStore();
+  final AudioPlayer _flipPlayer = AudioPlayer();
   ClockEngine? _engine;
   bool _settingsOpen = false;
   bool _ready = false;
@@ -28,9 +30,14 @@ class _ClockScreenState extends State<ClockScreen> {
 
   LaunchMode get _mode => widget.mode;
 
+  bool get _flipSoundEnabled =>
+      _mode.allowInteractiveGestures && _store.settings.enableFlipSound;
+
   @override
   void initState() {
     super.initState();
+    unawaited(_flipPlayer.setReleaseMode(ReleaseMode.stop));
+    unawaited(_flipPlayer.setPlayerMode(PlayerMode.lowLatency));
     _bootstrap();
   }
 
@@ -76,12 +83,23 @@ class _ClockScreenState extends State<ClockScreen> {
     }
   }
 
+  Future<void> _playFlipSound() async {
+    if (!_flipSoundEnabled) return;
+    try {
+      await _flipPlayer.stop();
+      await _flipPlayer.play(AssetSource('sounds/flip.wav'));
+    } catch (_) {
+      // Audio is best-effort; ignore platform/plugin failures.
+    }
+  }
+
   @override
   void dispose() {
     _store.removeListener(_onSettingsChanged);
     final store = _store;
     unawaited(store.flush().whenComplete(store.dispose));
     _engine?.dispose();
+    unawaited(_flipPlayer.dispose());
     PlatformShell.disableKeepAwake();
     super.dispose();
   }
@@ -190,6 +208,9 @@ class _ClockScreenState extends State<ClockScreen> {
           return ClockFace(
             snapshot: snapshot,
             settings: _store.settings,
+            onDigitFlip: _flipSoundEnabled
+                ? () => unawaited(_playFlipSound())
+                : null,
           );
         },
       ),

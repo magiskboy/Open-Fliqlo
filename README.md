@@ -7,8 +7,9 @@ Cross-platform fullscreen flip clock for **iOS**, **Android**, **Windows**, **Li
 ## Features
 
 - Flip clock `HH:MM` (+ optional seconds, AM/PM in 12-hour mode)
+- Horizontal or vertical digit layout
 - Tap to toggle seconds · long-press for settings (interactive app)
-- 12/24h, dim, scale, flaps
+- 12/24h, dim, scale, flaps, optional flip sound
 - Keep screen awake on mobile; fullscreen on desktop
 - OS screen saver integrations (see matrix below)
 

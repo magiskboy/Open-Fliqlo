@@ -13,6 +13,7 @@ class FlipDigit extends StatefulWidget {
     this.showFlaps = true,
     this.duration = FliqloTheme.flipDuration,
     this.atlas,
+    this.onFlip,
   });
 
   /// Target digit (0–9).
@@ -22,6 +23,9 @@ class FlipDigit extends StatefulWidget {
 
   /// Optional shared raster glyph cache; falls back to [TextPainter] if null.
   final DigitGlyphAtlas? atlas;
+
+  /// Called when this digit starts a flip animation.
+  final VoidCallback? onFlip;
 
   @override
   State<FlipDigit> createState() => _FlipDigitState();
@@ -49,6 +53,7 @@ class _FlipDigitState extends State<FlipDigit>
       _from = oldWidget.digit;
       _to = widget.digit;
       _controller.forward(from: 0);
+      widget.onFlip?.call();
     }
     if (widget.duration != oldWidget.duration) {
       _controller.duration = widget.duration;

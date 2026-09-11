@@ -1,3 +1,12 @@
+/// How digit pairs are arranged on the clock face.
+enum ClockLayout {
+  /// Classic Fliqlo row: HH : MM (: SS).
+  horizontal,
+
+  /// Stacked pairs: hours above minutes (optional seconds row below).
+  vertical,
+}
+
 /// User-configurable display options for Open Fliqlo.
 class FliqloSettings {
   const FliqloSettings({
@@ -7,6 +16,8 @@ class FliqloSettings {
     this.scale = 1.0,
     this.showFlaps = true,
     this.forceLandscape = false,
+    this.layout = ClockLayout.horizontal,
+    this.enableFlipSound = false,
   });
 
   final bool use24Hour;
@@ -24,6 +35,12 @@ class FliqloSettings {
   /// Lock the app to landscape orientations (mobile).
   final bool forceLandscape;
 
+  /// Horizontal row vs vertical stacked digit pairs.
+  final ClockLayout layout;
+
+  /// Play a short click when a digit flips (interactive app only).
+  final bool enableFlipSound;
+
   FliqloSettings copyWith({
     bool? use24Hour,
     bool? showSeconds,
@@ -31,6 +48,8 @@ class FliqloSettings {
     double? scale,
     bool? showFlaps,
     bool? forceLandscape,
+    ClockLayout? layout,
+    bool? enableFlipSound,
   }) {
     return FliqloSettings(
       use24Hour: use24Hour ?? this.use24Hour,
@@ -39,6 +58,8 @@ class FliqloSettings {
       scale: scale ?? this.scale,
       showFlaps: showFlaps ?? this.showFlaps,
       forceLandscape: forceLandscape ?? this.forceLandscape,
+      layout: layout ?? this.layout,
+      enableFlipSound: enableFlipSound ?? this.enableFlipSound,
     );
   }
 
@@ -50,7 +71,9 @@ class FliqloSettings {
         other.dim == dim &&
         other.scale == scale &&
         other.showFlaps == showFlaps &&
-        other.forceLandscape == forceLandscape;
+        other.forceLandscape == forceLandscape &&
+        other.layout == layout &&
+        other.enableFlipSound == enableFlipSound;
   }
 
   @override
@@ -61,5 +84,7 @@ class FliqloSettings {
         scale,
         showFlaps,
         forceLandscape,
+        layout,
+        enableFlipSound,
       );
 }

@@ -37,6 +37,27 @@ class SettingsStore extends ChangeNotifier {
   static const _kScale = 'scale';
   static const _kShowFlaps = 'showFlaps';
   static const _kForceLandscape = 'forceLandscape';
+  static const _kLayout = 'layout';
+  static const _kEnableFlipSound = 'enableFlipSound';
+
+  static ClockLayout _parseLayout(String? raw) {
+    switch (raw) {
+      case 'vertical':
+        return ClockLayout.vertical;
+      case 'horizontal':
+      default:
+        return ClockLayout.horizontal;
+    }
+  }
+
+  static String _layoutKey(ClockLayout layout) {
+    switch (layout) {
+      case ClockLayout.vertical:
+        return 'vertical';
+      case ClockLayout.horizontal:
+        return 'horizontal';
+    }
+  }
 
   Future<void> load() async {
     _prefs ??= _prefsOverride ?? await SharedPreferences.getInstance();
@@ -48,6 +69,8 @@ class SettingsStore extends ChangeNotifier {
       scale: (p.getDouble(_kScale) ?? 1.0).clamp(0.5, 1.0),
       showFlaps: p.getBool(_kShowFlaps) ?? true,
       forceLandscape: p.getBool(_kForceLandscape) ?? false,
+      layout: _parseLayout(p.getString(_kLayout)),
+      enableFlipSound: p.getBool(_kEnableFlipSound) ?? false,
     );
     _loaded = true;
     notifyListeners();
@@ -83,6 +106,8 @@ class SettingsStore extends ChangeNotifier {
     double? scale,
     bool? showFlaps,
     bool? forceLandscape,
+    ClockLayout? layout,
+    bool? enableFlipSound,
   }) {
     return commit(
       _settings.copyWith(
@@ -92,6 +117,8 @@ class SettingsStore extends ChangeNotifier {
         scale: scale,
         showFlaps: showFlaps,
         forceLandscape: forceLandscape,
+        layout: layout,
+        enableFlipSound: enableFlipSound,
       ),
     );
   }
@@ -133,6 +160,8 @@ class SettingsStore extends ChangeNotifier {
       p.setDouble(_kScale, next.scale),
       p.setBool(_kShowFlaps, next.showFlaps),
       p.setBool(_kForceLandscape, next.forceLandscape),
+      p.setString(_kLayout, _layoutKey(next.layout)),
+      p.setBool(_kEnableFlipSound, next.enableFlipSound),
     ]);
   }
 

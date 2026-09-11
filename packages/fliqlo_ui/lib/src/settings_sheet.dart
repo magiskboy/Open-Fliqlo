@@ -111,6 +111,23 @@ class SettingsSheet extends StatelessWidget {
                 onChanged: (v) =>
                     _commit(settings.copyWith(forceLandscape: v)),
               ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Vertical layout'),
+                value: settings.layout == ClockLayout.vertical,
+                onChanged: (v) => _commit(
+                  settings.copyWith(
+                    layout: v ? ClockLayout.vertical : ClockLayout.horizontal,
+                  ),
+                ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Flip sound'),
+                value: settings.enableFlipSound,
+                onChanged: (v) =>
+                    _commit(settings.copyWith(enableFlipSound: v)),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Dim (${(settings.dim * 100).round()}%)',

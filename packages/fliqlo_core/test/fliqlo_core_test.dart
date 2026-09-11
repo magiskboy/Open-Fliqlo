@@ -202,17 +202,29 @@ void main() {
         'use24Hour': false,
         'dim': 0.4,
         'forceLandscape': true,
+        'layout': 'vertical',
+        'enableFlipSound': true,
       });
       final store = SettingsStore();
       await store.load();
       expect(store.settings.use24Hour, isFalse);
       expect(store.settings.dim, 0.4);
       expect(store.settings.forceLandscape, isTrue);
+      expect(store.settings.layout, ClockLayout.vertical);
+      expect(store.settings.enableFlipSound, isTrue);
 
-      await store.patch(showSeconds: true, scale: 0.8, forceLandscape: false);
+      await store.patch(
+        showSeconds: true,
+        scale: 0.8,
+        forceLandscape: false,
+        layout: ClockLayout.horizontal,
+        enableFlipSound: false,
+      );
       expect(store.settings.showSeconds, isTrue);
       expect(store.settings.scale, 0.8);
       expect(store.settings.forceLandscape, isFalse);
+      expect(store.settings.layout, ClockLayout.horizontal);
+      expect(store.settings.enableFlipSound, isFalse);
 
       final store2 = SettingsStore();
       await store2.load();
@@ -220,8 +232,19 @@ void main() {
       expect(store2.settings.scale, 0.8);
       expect(store2.settings.use24Hour, isFalse);
       expect(store2.settings.forceLandscape, isFalse);
+      expect(store2.settings.layout, ClockLayout.horizontal);
+      expect(store2.settings.enableFlipSound, isFalse);
       store.dispose();
       store2.dispose();
+    });
+
+    test('layout defaults to horizontal when missing or unknown', () async {
+      SharedPreferences.setMockInitialValues({'layout': 'sideways'});
+      final store = SettingsStore();
+      await store.load();
+      expect(store.settings.layout, ClockLayout.horizontal);
+      expect(store.settings.enableFlipSound, isFalse);
+      store.dispose();
     });
 
     test('update debounces disk writes until flush or debounce elapses', () {
