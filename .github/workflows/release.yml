@@ -235,9 +235,18 @@ jobs:
           path: dist/*.ipa
           if-no-files-found: error
 
+  build-web:
+    name: Web Wasm + extensions
+    needs: test
+    uses: ./.github/workflows/web.yml
+    secrets: inherit
+    with:
+      version: ${{ github.ref_name }}
+      deploy_pages: true
+
   publish:
     name: Create GitHub Release
-    needs: [build-linux, build-windows, build-android, build-ios]
+    needs: [build-linux, build-windows, build-android, build-ios, build-web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -269,9 +278,16 @@ jobs:
             | `OpenFliqlo-windows-x64-*.zip` | Windows app + `OpenFliqlo.scr` |
             | `OpenFliqlo-android-*.apk` | Android (debug-keystore signed until release key is set) |
             | `OpenFliqlo-ios-unsigned-*.ipa` | iOS unsigned — not installable without Ad Hoc signing |
+            | `OpenFliqlo-chrome-extension-*.zip` | Chrome New Tab extension (Wasm) |
+            | `OpenFliqlo-firefox-extension-*.zip` | Firefox New Tab extension (Wasm) |
+            | `OpenFliqlo-web-*.tar.gz` | Hosted web (Cloudflare Pages source) |
 
-            See [docs/ci.md](docs/ci.md) and [docs/lockscreen-gnome.md](docs/lockscreen-gnome.md) for install notes.
+            See [docs/ci.md](docs/ci.md), [docs/web.md](docs/web.md), and [docs/lockscreen-gnome.md](docs/lockscreen-gnome.md) for install notes.
           files: |
-            release-assets/**
+            release-assets/*.tar.gz
+            release-assets/*.zip
+            release-assets/*.apk
+            release-assets/*.ipa
+            release-assets/*.shell-extension.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

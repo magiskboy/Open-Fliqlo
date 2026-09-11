@@ -16,6 +16,7 @@ pubspec.lock
 **/coverage/
 **/.cxx/
 platforms/gnome_shell_extension/dist/
+dist/
 
 # Platform
 **/linux/flutter/ephemeral/
@@ -31,3 +32,4 @@ platforms/gnome_shell_extension/dist/
 # Misc
 *.log
 .DS_Store
+.wrangler/

@@ -38,3 +38,9 @@ scripts:
   pack:gnome-extension:
     run: bash platforms/gnome_shell_extension/pack.sh
     description: Pack GNOME lock-screen Shell extension zip
+  build:web-wasm:
+    run: bash scripts/build_web_wasm.sh
+    description: Build Flutter web with Wasm (+ JS fallback)
+  pack:web-targets:
+    run: bash scripts/pack_web_targets.sh dist/web
+    description: Package Cloudflare Pages + Chrome/Firefox extension zips from web build

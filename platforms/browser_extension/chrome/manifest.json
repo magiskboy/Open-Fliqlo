@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Open Fliqlo",
+  "short_name": "Open Fliqlo",
+  "version": "0.1.0",
+  "description": "Fullscreen flip clock for your new tab.",
+  "icons": {
+    "16": "icons/Icon-192.png",
+    "48": "icons/Icon-192.png",
+    "128": "icons/Icon-192.png"
+  },
+  "action": {
+    "default_title": "Open Fliqlo",
+    "default_icon": {
+      "16": "icons/Icon-192.png",
+      "48": "icons/Icon-192.png"
+    }
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "permissions": ["storage"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self';"
+  },
+  "cross_origin_embedder_policy": {
+    "value": "credentialless"
+  },
+  "cross_origin_opener_policy": {
+    "value": "same-origin"
+  }
+}

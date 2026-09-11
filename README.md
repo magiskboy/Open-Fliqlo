@@ -1,6 +1,6 @@
 # Open Fliqlo
 
-Cross-platform fullscreen flip clock for **iOS**, **Android**, **Windows**, and **Linux (GNOME / Wayland)**. Inspired by the classic Fliqlo aesthetic — large flipping digits on a black background.
+Cross-platform fullscreen flip clock for **iOS**, **Android**, **Windows**, **Linux (GNOME / Wayland)**, and **Web** (Cloudflare Pages + Chrome/Firefox New Tab). Inspired by the classic Fliqlo aesthetic — large flipping digits on a black background.
 
 > Not affiliated with Fliqlo®.
 
@@ -20,6 +20,7 @@ Cross-platform fullscreen flip clock for **iOS**, **Android**, **Windows**, and 
 | **Android** | `DreamService` (system Screen saver) | [screensaver-android.md](docs/screensaver-android.md) |
 | **Linux GNOME** | `--screensaver` + idle script / `.desktop` | [screensaver-gnome.md](docs/screensaver-gnome.md) |
 | **Linux GNOME lock** | Shell extension + `--lockscreen` | [lockscreen-gnome.md](docs/lockscreen-gnome.md) |
+| **Web** | Hosted Wasm app + Chrome/Firefox **New Tab** | [web.md](docs/web.md) |
 | **iOS** | Flip clock **app only** (no system screensaver API) | [ios-ci.md](docs/ios-ci.md) |
 
 Shared modes: `--screensaver`, `--lockscreen`, `--configure`, `--preview` (see S0 in app `LaunchMode`).
@@ -27,13 +28,16 @@ Shared modes: `--screensaver`, `--lockscreen`, `--configure`, `--preview` (see S
 ## Structure
 
 ```
-apps/open_fliqlo/           Flutter app (iOS/Android/Windows/Linux)
+apps/open_fliqlo/           Flutter app (iOS/Android/Windows/Linux/Web)
 packages/fliqlo_core/       Clock engine + settings
 packages/fliqlo_ui/         FlipDigit, ClockFace, SettingsSheet
 platforms/windows_scr/      .scr host (.NET)
 platforms/gnome_shell_extension/  GNOME lock-screen extension
+platforms/browser_extension/      Chrome + Firefox New Tab manifests
 packaging/linux/            .desktop + idle-launch script
-docs/                       Behavior + screensaver / lock-screen guides
+packaging/web/              Cloudflare Pages `_headers`
+scripts/                    web Wasm build + multi-target pack
+docs/                       Behavior + screensaver / lock-screen / web guides
 ```
 
 ## Prerequisites
@@ -60,6 +64,9 @@ melos run run:windows
 melos run run:screensaver:linux
 # or: cd apps/open_fliqlo && flutter run -d linux -a --screensaver
 
+# Web (Chrome, Wasm)
+cd apps/open_fliqlo && flutter run -d chrome --wasm
+
 # Mobile
 cd apps/open_fliqlo && flutter run -d <device>
 ```
@@ -71,6 +78,18 @@ On a Windows machine:
 ```powershell
 .\platforms\windows_scr\build.ps1
 ```
+
+## Build Web + browser extensions
+
+```bash
+melos run build:web-wasm
+melos run pack:web-targets
+# → dist/web/cloudflare-pages/
+# → dist/web/OpenFliqlo-chrome-extension-*.zip
+# → dist/web/OpenFliqlo-firefox-extension-*.zip
+```
+
+Details: [docs/web.md](docs/web.md).
 
 ## Test / analyze
 

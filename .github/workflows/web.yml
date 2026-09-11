@@ -1,0 +1,140 @@
+name: Web (Wasm)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: Artifact version label (e.g. v1.0.0)
+        required: false
+        type: string
+        default: ""
+      deploy_pages:
+        description: Deploy cloudflare-pages/ to Cloudflare Pages
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: web-wasm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-pack:
+    name: Build Wasm + package targets
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve version
+        id: meta
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            SHA_SHORT="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+            VERSION="0.1.0+${SHA_SHORT}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Using version ${VERSION}"
+
+      - name: Build web Wasm
+        run: ./scripts/build_web_wasm.sh
+
+      - name: Package Cloudflare + Chrome + Firefox
+        run: ./scripts/pack_web_targets.sh dist/web "${{ steps.meta.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-pages-${{ steps.meta.outputs.version }}
+          path: dist/web/cloudflare-pages
+          if-no-files-found: error
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-extensions-${{ steps.meta.outputs.version }}
+          path: |
+            dist/web/OpenFliqlo-chrome-extension-*.zip
+            dist/web/OpenFliqlo-firefox-extension-*.zip
+            dist/web/OpenFliqlo-web-*.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy-cloudflare:
+    name: Deploy Cloudflare Pages
+    needs: build-pack
+    # Do not block PRs; only main / manual / explicit release call.
+    # continue-on-error: missing secrets should not fail Release artifact publish.
+    continue-on-error: true
+    if: >
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch') ||
+        (github.event_name == 'workflow_call' && inputs.deploy_pages)
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Require Cloudflare secrets
+        id: gate
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [[ -z "${TOKEN}" || -z "${ACCOUNT}" ]]; then
+            echo "Skipping Cloudflare deploy: CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set."
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.gate.outputs.should_deploy == 'true'
+        with:
+          name: web-pages-${{ needs.build-pack.outputs.version }}
+          path: artifact/cloudflare-pages
+
+      - name: Locate Pages directory
+        if: steps.gate.outputs.should_deploy == 'true'
+        id: pages
+        run: |
+          set -euo pipefail
+          DIR="artifact/cloudflare-pages"
+          test -f "${DIR}/index.html"
+          test -f "${DIR}/_headers"
+          echo "dir=${DIR}" >> "$GITHUB_OUTPUT"
+          ls -la "${DIR}" | head
+
+      - name: Resolve Cloudflare project name
+        if: steps.gate.outputs.should_deploy == 'true'
+        id: cf
+        run: |
+          PROJECT="${{ vars.CLOUDFLARE_PAGES_PROJECT }}"
+          if [[ -z "${PROJECT}" ]]; then
+            PROJECT="open-fliqlo"
+          fi
+          echo "project=${PROJECT}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to Cloudflare Pages
+        if: steps.gate.outputs.should_deploy == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy "${{ steps.pages.outputs.dir }}" --project-name=${{ steps.cf.outputs.project }} --branch=${{ github.ref_name }}
